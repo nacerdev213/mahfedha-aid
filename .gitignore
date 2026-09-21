@@ -1,0 +1,16 @@
+node_modules
+dist
+src-tauri/target
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.pre_import
+src-tauri/*.db
+src-tauri/*.db-wal
+src-tauri/*.db-shm
+src-tauri/*.db-journal
+src-tauri/*.pre_import
+*.log
+.DS_Store
+Thumbs.db

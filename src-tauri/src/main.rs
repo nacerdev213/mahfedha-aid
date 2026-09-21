@@ -1,0 +1,1623 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use tauri::State;
+
+struct AppState {
+    db: Mutex<Connection>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Campaign {
+    pub id: i64,
+    pub year_label: String,
+    pub is_active: bool,
+    pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CampaignWithCount {
+    pub id: i64,
+    pub year_label: String,
+    pub is_active: bool,
+    pub created_at: Option<String>,
+    pub record_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BeneficiaryRecord {
+    pub id: Option<i64>, // campaign_record id
+    pub record_no: Option<i64>, // Unique per campaign
+    pub guardian_id: Option<i64>,
+    pub guardian_name: String,
+    pub phone: String,
+    pub social_status: String,
+    pub primary_count: i64,
+    pub middle_count: i64,
+    pub secondary_count: i64,
+    pub is_delivered: Option<bool>,
+    pub delivered_at: Option<String>,
+    // Optional school form fields:
+    #[serde(default)]
+    pub birth_date: Option<String>,
+    #[serde(default)]
+    pub birth_place: Option<String>,
+    #[serde(default)]
+    pub address: Option<String>,
+    #[serde(default)]
+    pub marital_status: Option<String>,
+    #[serde(default)]
+    pub father_name: Option<String>,
+    #[serde(default)]
+    pub mother_name: Option<String>,
+    #[serde(default)]
+    pub spouse_name: Option<String>,
+    #[serde(default)]
+    pub monthly_income: Option<String>,
+    #[serde(default)]
+    pub children_count: Option<i64>,
+    #[serde(default)]
+    pub children: Vec<ChildRecord>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ChildRecord {
+    pub id: Option<i64>,
+    pub guardian_id: Option<i64>,
+    pub child_name: String,
+    pub birth_date: Option<String>,
+    pub is_schooling: bool,
+    pub education_level: Option<String>,
+    pub school_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BeneficiaryMatchResult {
+    pub match_type: String, // "none" | "current_campaign" | "previous_campaign"
+    pub message: String,
+    pub matched_record: Option<BeneficiaryRecord>,
+    pub previous_campaign_year: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct Stats {
+    pub total_families: i64,
+    pub total_bags: i64,
+    pub primary_total: i64,
+    pub middle_total: i64,
+    pub secondary_total: i64,
+    pub primary_delivered: i64,
+    pub middle_delivered: i64,
+    pub secondary_delivered: i64,
+    pub delivered_families: i64,
+    pub pending_families: i64,
+    pub delivered_bags: i64,
+    pub pending_bags: i64,
+    pub progress_percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OrgSettings {
+    pub id: Option<i64>,
+    pub org_name: String,
+    pub branch_name: String,
+    pub wilaya: String,
+    pub commune: String,
+    pub phone: String,
+    pub footer_text: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SocialStatusItem {
+    pub id: i64,
+    pub name: String,
+    pub count: i64,
+    pub created_at: Option<String>,
+}
+
+#[tauri::command]
+fn get_campaigns(state: State<AppState>) -> Result<Vec<Campaign>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, year_label, is_active, created_at FROM campaigns ORDER BY id DESC").map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| {
+        Ok(Campaign {
+            id: row.get(0)?,
+            year_label: row.get(1)?,
+            is_active: row.get::<_, i64>(2)? != 0,
+            created_at: row.get(3)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in rows {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+fn get_campaigns_with_counts(state: State<AppState>) -> Result<Vec<CampaignWithCount>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT c.id, c.year_label, c.is_active, c.created_at,
+                COUNT(r.id) as record_count
+         FROM campaigns c
+         LEFT JOIN campaign_records r ON r.campaign_id = c.id
+         GROUP BY c.id
+         ORDER BY c.id DESC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| {
+        Ok(CampaignWithCount {
+            id: row.get(0)?,
+            year_label: row.get(1)?,
+            is_active: row.get::<_, i64>(2)? != 0,
+            created_at: row.get(3)?,
+            record_count: row.get(4)?,
+        })
+    }).map_err(|e| e.to_string())?;
+    let mut list = Vec::new();
+    for item in rows { list.push(item.map_err(|e| e.to_string())?); }
+    Ok(list)
+}
+
+#[tauri::command]
+fn get_all_record_numbers(state: State<AppState>, campaign_id: i64) -> Result<Vec<i64>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT record_no FROM campaign_records WHERE campaign_id = ?1 AND record_no IS NOT NULL ORDER BY record_no ASC").map_err(|e| e.to_string())?;
+    
+    let rows = stmt.query_map(params![campaign_id], |row| {
+        row.get::<_, i64>(0)
+    }).map_err(|e| e.to_string())?;
+
+    let mut numbers = Vec::new();
+    for num in rows {
+        if let Ok(n) = num {
+            numbers.push(n);
+        }
+    }
+    Ok(numbers)
+}
+
+#[derive(Serialize)]
+pub struct SocialStatusStat {
+    pub status: String,
+    pub families_count: i64,
+    pub bags_count: i64,
+}
+
+#[tauri::command]
+fn get_social_status_stats(state: State<AppState>, campaign_id: i64) -> Result<Vec<SocialStatusStat>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT COALESCE(NULLIF(TRIM(g.social_status), ''), 'غير محدد') as status,
+                COUNT(r.id) as families_count,
+                COALESCE(SUM(COALESCE(r.primary_count, 0) + COALESCE(r.middle_count, 0) + COALESCE(r.secondary_count, 0)), 0) as bags_count
+         FROM campaign_records r
+         JOIN guardians g ON r.guardian_id = g.id
+         WHERE r.campaign_id = ?1
+         GROUP BY status
+         ORDER BY families_count DESC"
+    ).map_err(|e| e.to_string())?;
+    
+    let rows = stmt.query_map(params![campaign_id], |row| {
+        Ok(SocialStatusStat {
+            status: row.get(0)?,
+            families_count: row.get(1)?,
+            bags_count: row.get(2)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut stats = Vec::new();
+    for item in rows {
+        stats.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(stats)
+}
+
+#[tauri::command]
+fn update_campaign_label(state: State<AppState>, id: i64, new_label: String) -> Result<(), String> {
+    let label = new_label.trim();
+    if label.is_empty() {
+        return Err("تسمية الموسم لا يمكن أن تكون فارغة".into());
+    }
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE campaigns SET year_label = ?1 WHERE id = ?2",
+        params![label, id],
+    ).map_err(|e| format!("فشل تعديل اسم الموسم (قد يكون الاسم مكرراً): {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_campaign(state: State<AppState>, id: i64) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM campaign_records WHERE campaign_id = ?1",
+        params![id],
+        |r| r.get(0),
+    ).unwrap_or(0);
+    if count > 0 {
+        return Err(format!(
+            "لا يمكن حذف هذا الموسم لأنه يحتوي على {} مستفيد. احذف جميع سجلاتهم أولاً.",
+            count
+        ));
+    }
+    conn.execute("DELETE FROM campaigns WHERE id = ?1", params![id])
+        .map_err(|e| format!("فشل حذف الموسم: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn set_active_campaign(state: State<AppState>, id: i64) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute("UPDATE campaigns SET is_active = 0", []).map_err(|e| e.to_string())?;
+    conn.execute("UPDATE campaigns SET is_active = 1 WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn create_campaign(state: State<AppState>, year_label: String, rollover_from_id: Option<i64>) -> Result<Campaign, String> {
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let label = year_label.trim();
+    if label.is_empty() {
+        return Err("يرجى إدخال تسمية الموسم (مثال: 2026/2027)".into());
+    }
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    tx.execute("UPDATE campaigns SET is_active = 0", []).map_err(|e| e.to_string())?;
+
+    tx.execute(
+        "INSERT INTO campaigns (year_label, is_active) VALUES (?1, 1)",
+        params![label],
+    ).map_err(|e| format!("فشل في إنشاء الموسم (قد يكون الاسم مكرراً): {}", e))?;
+
+    let new_campaign_id = tx.last_insert_rowid();
+
+    if let Some(prev_id) = rollover_from_id {
+        tx.execute(
+            "INSERT OR IGNORE INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
+             SELECT ?1, guardian_id, record_no, primary_count, middle_count, secondary_count FROM campaign_records WHERE campaign_id = ?2",
+            params![new_campaign_id, prev_id],
+        ).map_err(|e| format!("فشل في ترحيل المستفيدين من الموسم السابق: {}", e))?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+
+    Ok(Campaign {
+        id: new_campaign_id,
+        year_label: label.to_string(),
+        is_active: true,
+        created_at: None,
+    })
+}
+
+#[tauri::command]
+fn rollover_campaign_records(
+    state: State<AppState>,
+    from_campaign_id: i64,
+    to_campaign_id: i64,
+) -> Result<i64, String> {
+    if from_campaign_id == to_campaign_id {
+        return Err("لا يمكن الترحيل من الموسم إلى نفسه.".into());
+    }
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // Max record_no already in target campaign
+    let max_no: i64 = tx.query_row(
+        "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+        params![to_campaign_id],
+        |r| r.get(0),
+    ).unwrap_or(0);
+
+    // Fetch source records that are NOT yet in target (by guardian_id)
+    let mut stmt = tx.prepare(
+        "SELECT guardian_id, primary_count, middle_count, secondary_count
+         FROM campaign_records
+         WHERE campaign_id = ?1
+           AND guardian_id NOT IN (
+               SELECT guardian_id FROM campaign_records WHERE campaign_id = ?2
+           )
+         ORDER BY record_no ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let records: Vec<(i64, i64, i64, i64)> = stmt
+        .query_map(params![from_campaign_id, to_campaign_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    drop(stmt);
+
+    let mut counter = max_no;
+    for (guardian_id, primary_count, middle_count, secondary_count) in &records {
+        counter += 1;
+        tx.execute(
+            "INSERT INTO campaign_records
+                 (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![to_campaign_id, guardian_id, counter, primary_count, middle_count, secondary_count],
+        ).map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(records.len() as i64)
+}
+
+#[tauri::command]
+fn get_next_record_no(state: State<AppState>, campaign_id: i64) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let max_no: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+        params![campaign_id],
+        |r| r.get(0),
+    ).unwrap_or(0);
+    Ok(max_no + 1)
+}
+
+#[tauri::command]
+fn get_beneficiaries(state: State<AppState>, campaign_id: i64, search: String, status_filter: String) -> Result<Vec<BeneficiaryRecord>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut query = String::from(
+        "SELECT r.id, g.id, g.guardian_name, g.phone, g.social_status, 
+                r.primary_count, r.middle_count, r.secondary_count, r.record_no,
+                COALESCE(r.is_delivered, 0), r.delivered_at,
+                g.birth_date, g.birth_place, g.address, g.marital_status,
+                g.father_name, g.mother_name, g.spouse_name, g.monthly_income, g.children_count
+         FROM campaign_records r
+         JOIN guardians g ON r.guardian_id = g.id
+         WHERE r.campaign_id = ?1 AND (g.guardian_name LIKE ?2 OR g.phone LIKE ?2 OR CAST(r.record_no AS TEXT) LIKE ?2)"
+    );
+
+    let pattern = format!("%{}%", search);
+    let filter_active = !status_filter.is_empty() && status_filter != "الكل";
+
+    if filter_active {
+        query.push_str(" AND g.social_status = ?3");
+    }
+    query.push_str(" ORDER BY r.record_no ASC, r.id ASC");
+
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    let mut list = Vec::new();
+
+    let mapper = |row: &rusqlite::Row| -> rusqlite::Result<BeneficiaryRecord> {
+        let is_del_int: i64 = row.get(9)?;
+        Ok(BeneficiaryRecord {
+            children: Vec::new(),
+            id: Some(row.get(0)?),
+            guardian_id: Some(row.get(1)?),
+            guardian_name: row.get(2)?,
+            phone: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            social_status: row.get(4)?,
+            primary_count: row.get(5)?,
+            middle_count: row.get(6)?,
+            secondary_count: row.get(7)?,
+            record_no: row.get(8)?,
+            is_delivered: Some(is_del_int != 0),
+            delivered_at: row.get(10)?,
+            birth_date: row.get(11)?,
+            birth_place: row.get(12)?,
+            address: row.get(13)?,
+            marital_status: row.get(14)?,
+            father_name: row.get(15)?,
+            mother_name: row.get(16)?,
+            spouse_name: row.get(17)?,
+            monthly_income: row.get(18)?,
+            children_count: row.get(19)?,
+        })
+    };
+
+    if filter_active {
+        let rows = stmt.query_map(params![campaign_id, pattern, status_filter], mapper).map_err(|e| e.to_string())?;
+        for item in rows {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let rows = stmt.query_map(params![campaign_id, pattern], mapper).map_err(|e| e.to_string())?;
+        for item in rows {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    }
+
+    Ok(list)
+}
+
+#[tauri::command]
+fn get_guardian_children(state: State<AppState>, guardian_id: i64) -> Result<Vec<ChildRecord>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, guardian_id, child_name, birth_date, is_schooling, education_level, school_name 
+         FROM guardian_children 
+         WHERE guardian_id = ?1 
+         ORDER BY id ASC"
+    ).map_err(|e| e.to_string())?;
+    
+    let rows = stmt.query_map(params![guardian_id], |row| {
+        Ok(ChildRecord {
+            id: Some(row.get(0)?),
+            guardian_id: Some(row.get(1)?),
+            child_name: row.get(2)?,
+            birth_date: row.get(3)?,
+            is_schooling: row.get::<_, i64>(4)? != 0,
+            education_level: row.get(5)?,
+            school_name: row.get(6)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in rows {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+fn check_beneficiary_match(
+    state: State<AppState>,
+    campaign_id: i64,
+    guardian_name: String,
+    birth_date: Option<String>,
+    father_name: Option<String>,
+    mother_name: Option<String>,
+) -> Result<BeneficiaryMatchResult, String> {
+    let name = guardian_name.trim();
+    if name.chars().count() < 3 {
+        return Ok(BeneficiaryMatchResult {
+            match_type: "none".into(),
+            message: String::new(),
+            matched_record: None,
+            previous_campaign_year: None,
+        });
+    }
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let b_date = birth_date.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let f_name = father_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let m_name = mother_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+
+    // Search guardians with exact name or containing name
+    let mut stmt = conn.prepare(
+        "SELECT id, guardian_name, phone, social_status, birth_date, birth_place, address,
+                marital_status, father_name, mother_name, spouse_name, monthly_income, children_count
+         FROM guardians
+         WHERE TRIM(guardian_name) = ?1 OR TRIM(guardian_name) LIKE ?2"
+    ).map_err(|e| e.to_string())?;
+
+    let like_pattern = format!("%{}%", name);
+    let rows = stmt.query_map(params![name, like_pattern], |row| {
+        Ok(BeneficiaryRecord {
+            children: Vec::new(),
+            id: None,
+            record_no: None,
+            guardian_id: Some(row.get(0)?),
+            guardian_name: row.get(1)?,
+            phone: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            social_status: row.get(3)?,
+            primary_count: 0,
+            middle_count: 0,
+            secondary_count: 0,
+            is_delivered: None,
+            delivered_at: None,
+            birth_date: row.get(4)?,
+            birth_place: row.get(5)?,
+            address: row.get(6)?,
+            marital_status: row.get(7)?,
+            father_name: row.get(8)?,
+            mother_name: row.get(9)?,
+            spouse_name: row.get(10)?,
+            monthly_income: row.get(11)?,
+            children_count: row.get(12)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut candidates = Vec::new();
+    for r in rows {
+        if let Ok(rec) = r {
+            // Check compatibility if details are provided
+            let mut mismatch = false;
+            if let (Some(b1), Some(b2)) = (&b_date, rec.birth_date.as_deref()) {
+                if !b1.is_empty() && !b2.is_empty() && b1 != b2 { mismatch = true; }
+            }
+            if let (Some(f1), Some(f2)) = (&f_name, rec.father_name.as_deref()) {
+                if !f1.is_empty() && !f2.is_empty() && f1 != f2 { mismatch = true; }
+            }
+            if let (Some(m1), Some(m2)) = (&m_name, rec.mother_name.as_deref()) {
+                if !m1.is_empty() && !m2.is_empty() && m1 != m2 { mismatch = true; }
+            }
+            if !mismatch {
+                candidates.push(rec);
+            }
+        }
+    }
+
+    if candidates.is_empty() {
+        return Ok(BeneficiaryMatchResult {
+            match_type: "none".into(),
+            message: String::new(),
+            matched_record: None,
+            previous_campaign_year: None,
+        });
+    }
+
+    // 1. Check candidates in CURRENT campaign first (Duplicate check)
+    for cand in &candidates {
+        let gid = cand.guardian_id.unwrap();
+        let curr: Option<(i64, i64, i64, i64, i64)> = conn.query_row(
+            "SELECT id, record_no, primary_count, middle_count, secondary_count
+             FROM campaign_records
+             WHERE campaign_id = ?1 AND guardian_id = ?2
+             LIMIT 1",
+            params![campaign_id, gid],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        ).optional().map_err(|e| e.to_string())?;
+
+        if let Some((rid, rec_no, p, m, s)) = curr {
+            let mut matched = cand.clone();
+            matched.id = Some(rid);
+            matched.record_no = Some(rec_no);
+            matched.primary_count = p;
+            matched.middle_count = m;
+            matched.secondary_count = s;
+
+            return Ok(BeneficiaryMatchResult {
+                match_type: "current_campaign".into(),
+                message: format!(
+                    "المستفيد '{}' مسجل بالفعل في هذا الموسم الحالي برقم ({}). لا يمكن تكرار إدخاله مرتين.",
+                    cand.guardian_name, rec_no
+                ),
+                matched_record: Some(matched),
+                previous_campaign_year: None,
+            });
+        }
+    }
+
+    // 2. Check candidates in PREVIOUS / other campaigns (Rollover proposal)
+    for cand in &candidates {
+        let gid = cand.guardian_id.unwrap();
+        let prev: Option<(i64, String, i64, i64, i64, i64)> = conn.query_row(
+            "SELECT c.id, c.year_label, r.primary_count, r.middle_count, r.secondary_count, r.record_no
+             FROM campaign_records r
+             JOIN campaigns c ON r.campaign_id = c.id
+             WHERE r.guardian_id = ?1 AND r.campaign_id != ?2
+             ORDER BY c.id DESC
+             LIMIT 1",
+            params![gid, campaign_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+        ).optional().map_err(|e| e.to_string())?;
+
+        if let Some((_prev_cid, year_label, p, m, s, _prev_rec_no)) = prev {
+            let mut matched = cand.clone();
+            matched.id = None;
+            matched.record_no = None;
+            matched.primary_count = p;
+            matched.middle_count = m;
+            matched.secondary_count = s;
+
+            return Ok(BeneficiaryMatchResult {
+                match_type: "previous_campaign".into(),
+                message: format!(
+                    "تم العثور على نفس المستفيد '{}' مسجلاً في موسم سابق ({}). يمكنك ترحيله واستيراد كافة بياناته لهذا الموسم.",
+                    cand.guardian_name, year_label
+                ),
+                matched_record: Some(matched),
+                previous_campaign_year: Some(year_label),
+            });
+        }
+    }
+
+    Ok(BeneficiaryMatchResult {
+        match_type: "none".into(),
+        message: String::new(),
+        matched_record: None,
+        previous_campaign_year: None,
+    })
+}
+
+#[tauri::command]
+fn save_beneficiary(state: State<AppState>, campaign_id: i64, payload: BeneficiaryRecord) -> Result<(), String> {
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let name = payload.guardian_name.trim();
+    if name.is_empty() {
+        return Err("اسم ولي الأمر مطلوب".into());
+    }
+
+    let rec_no = match payload.record_no {
+        Some(n) if n > 0 => n,
+        _ => {
+            let max_no: i64 = tx.query_row(
+                "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+                params![campaign_id],
+                |r| r.get(0),
+            ).unwrap_or(0);
+            max_no + 1
+        }
+    };
+
+    // Check if record_no is already taken by another record in this campaign
+    let conflict: Option<i64> = if let Some(rid) = payload.id {
+        tx.query_row(
+            "SELECT id FROM campaign_records WHERE campaign_id = ?1 AND record_no = ?2 AND id != ?3 LIMIT 1",
+            params![campaign_id, rec_no, rid],
+            |r| r.get(0),
+        ).optional().map_err(|e| e.to_string())?
+    } else {
+        tx.query_row(
+            "SELECT id FROM campaign_records WHERE campaign_id = ?1 AND record_no = ?2 LIMIT 1",
+            params![campaign_id, rec_no],
+            |r| r.get(0),
+        ).optional().map_err(|e| e.to_string())?
+    };
+
+    if conflict.is_some() {
+        return Err(format!("الرقم ({}) مسجل بالفعل لمستفيد آخر في هذا الموسم. يرجى اختيار رقم فريد.", rec_no));
+    }
+
+    let status = if !payload.social_status.trim().is_empty() {
+        payload.social_status.trim().to_string()
+    } else {
+        "بدون دخل".to_string()
+    };
+
+    let birth_date = payload.birth_date.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let birth_place = payload.birth_place.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let address = payload.address.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let marital_status = payload.marital_status.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let father_name = payload.father_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let mother_name = payload.mother_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let spouse_name = payload.spouse_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let monthly_income = payload.monthly_income.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let children_count = payload.children_count;
+
+    // Check duplicate in current campaign if creating a new record (payload.id is None)
+    if payload.id.is_none() {
+        if let Some(gid) = payload.guardian_id {
+            let already_in_campaign: Option<i64> = tx.query_row(
+                "SELECT record_no FROM campaign_records WHERE campaign_id = ?1 AND guardian_id = ?2 LIMIT 1",
+                params![campaign_id, gid],
+                |r| r.get(0),
+            ).optional().map_err(|e| e.to_string())?;
+
+            if let Some(existing_no) = already_in_campaign {
+                return Err(format!("المستفيد '{}' مسجل بالفعل في هذا الموسم برقم ({}). لا يمكن تكرار إدخاله مرتين.", name, existing_no));
+            }
+        } else {
+            // Check if a guardian with same name (and matching details) is already in this campaign
+            let mut stmt = tx.prepare(
+                "SELECT g.id, g.birth_date, g.father_name, g.mother_name, r.record_no
+                 FROM guardians g
+                 JOIN campaign_records r ON r.guardian_id = g.id
+                 WHERE r.campaign_id = ?1 AND TRIM(g.guardian_name) = ?2"
+            ).map_err(|e| e.to_string())?;
+
+            let rows = stmt.query_map(params![campaign_id, name], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                    row.get::<_, i64>(4)?,
+                ))
+            }).map_err(|e| e.to_string())?;
+
+            for item in rows {
+                if let Ok((_gid, cand_bdate, cand_fname, cand_mname, cand_rec_no)) = item {
+                    let mut mismatch = false;
+                    if let (Some(b1), Some(b2)) = (&birth_date, &cand_bdate) {
+                        if !b1.is_empty() && !b2.is_empty() && b1 != b2 { mismatch = true; }
+                    }
+                    if let (Some(f1), Some(f2)) = (&father_name, &cand_fname) {
+                        if !f1.is_empty() && !f2.is_empty() && f1 != f2 { mismatch = true; }
+                    }
+                    if let (Some(m1), Some(m2)) = (&mother_name, &cand_mname) {
+                        if !m1.is_empty() && !m2.is_empty() && m1 != m2 { mismatch = true; }
+                    }
+                    if !mismatch {
+                        return Err(format!("المستفيد '{}' مسجل بالفعل في هذا الموسم برقم ({}). لا يمكن تكرار إدخاله مرتين.", name, cand_rec_no));
+                    }
+                }
+            }
+        }
+    }
+
+    let guardian_id = if let Some(gid) = payload.guardian_id {
+        tx.execute(
+            "UPDATE guardians SET guardian_name = ?1, phone = ?2, social_status = ?3,
+             birth_date = ?4, birth_place = ?5, address = ?6, marital_status = ?7,
+             father_name = ?8, mother_name = ?9, spouse_name = ?10, monthly_income = ?11, children_count = ?12
+             WHERE id = ?13",
+            params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, gid],
+        ).map_err(|e| e.to_string())?;
+        gid
+    } else {
+        // Try finding existing guardian by name (and matching details)
+        let mut stmt = tx.prepare(
+            "SELECT id, birth_date, father_name, mother_name FROM guardians WHERE TRIM(guardian_name) = ?1"
+        ).map_err(|e| e.to_string())?;
+        let candidates: Vec<(i64, Option<String>, Option<String>, Option<String>)> = stmt.query_map(params![name], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+        }).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+
+        let matched_gid = candidates.into_iter().find(|(_gid, cand_bdate, cand_fname, cand_mname)| {
+            if let (Some(b1), Some(b2)) = (&birth_date, cand_bdate) {
+                if !b1.is_empty() && !b2.is_empty() && b1 != b2 { return false; }
+            }
+            if let (Some(f1), Some(f2)) = (&father_name, cand_fname) {
+                if !f1.is_empty() && !f2.is_empty() && f1 != f2 { return false; }
+            }
+            if let (Some(m1), Some(m2)) = (&mother_name, cand_mname) {
+                if !m1.is_empty() && !m2.is_empty() && m1 != m2 { return false; }
+            }
+            true
+        }).map(|(gid, _, _, _)| gid);
+
+        if let Some(gid) = matched_gid {
+            tx.execute(
+                "UPDATE guardians SET phone = ?1, social_status = ?2,
+                 birth_date = COALESCE(?3, birth_date),
+                 birth_place = COALESCE(?4, birth_place),
+                 address = COALESCE(?5, address),
+                 marital_status = COALESCE(?6, marital_status),
+                 father_name = COALESCE(?7, father_name),
+                 mother_name = COALESCE(?8, mother_name),
+                 spouse_name = COALESCE(?9, spouse_name),
+                 monthly_income = COALESCE(?10, monthly_income),
+                 children_count = COALESCE(?11, children_count)
+                 WHERE id = ?12",
+                params![payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, gid],
+            ).map_err(|e| e.to_string())?;
+            gid
+        } else {
+            tx.execute(
+                "INSERT INTO guardians (guardian_name, phone, social_status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count],
+            ).map_err(|e| e.to_string())?;
+            tx.last_insert_rowid()
+        }
+    };
+
+    if let Some(rid) = payload.id {
+        tx.execute(
+            "UPDATE campaign_records SET record_no = ?1, primary_count = ?2, middle_count = ?3, secondary_count = ?4 WHERE id = ?5 AND campaign_id = ?6",
+            params![rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0), rid, campaign_id],
+        ).map_err(|e| e.to_string())?;
+    } else {
+        tx.execute(
+            "INSERT INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![campaign_id, guardian_id, rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0)],
+        ).map_err(|e| e.to_string())?;
+    }
+
+    // Save children records
+    tx.execute("DELETE FROM guardian_children WHERE guardian_id = ?1", params![guardian_id]).map_err(|e| e.to_string())?;
+    for child in &payload.children {
+        if !child.child_name.trim().is_empty() {
+            tx.execute(
+                "INSERT INTO guardian_children (guardian_id, child_name, birth_date, is_schooling, education_level, school_name) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![guardian_id, child.child_name.trim(), child.birth_date.as_deref().map(|s| s.trim()), child.is_schooling, child.education_level.as_deref().map(|s| s.trim()), child.school_name.as_deref().map(|s| s.trim())],
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_beneficiary(state: State<AppState>, record_id: i64) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM campaign_records WHERE id = ?1", params![record_id]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn bulk_delete_beneficiaries(state: State<AppState>, record_ids: Vec<i64>) -> Result<usize, String> {
+    if record_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut count = 0;
+    {
+        let mut stmt = tx.prepare("DELETE FROM campaign_records WHERE id = ?1").map_err(|e| e.to_string())?;
+        for id in &record_ids {
+            count += stmt.execute(params![id]).map_err(|e| e.to_string())?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+#[tauri::command]
+fn get_stats(state: State<AppState>, campaign_id: i64) -> Result<Stats, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stats = Stats::default();
+
+    stats.total_families = conn.query_row(
+        "SELECT COUNT(*) FROM campaign_records WHERE campaign_id = ?1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.primary_total = conn.query_row(
+        "SELECT COALESCE(SUM(primary_count), 0) FROM campaign_records WHERE campaign_id = ?1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.middle_total = conn.query_row(
+        "SELECT COALESCE(SUM(middle_count), 0) FROM campaign_records WHERE campaign_id = ?1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.secondary_total = conn.query_row(
+        "SELECT COALESCE(SUM(secondary_count), 0) FROM campaign_records WHERE campaign_id = ?1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.total_bags = stats.primary_total + stats.middle_total + stats.secondary_total;
+
+    stats.delivered_families = conn.query_row(
+        "SELECT COUNT(*) FROM campaign_records WHERE campaign_id = ?1 AND is_delivered = 1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.pending_families = stats.total_families.saturating_sub(stats.delivered_families);
+
+    stats.delivered_bags = conn.query_row(
+        "SELECT COALESCE(SUM(primary_count + middle_count + secondary_count), 0) 
+         FROM campaign_records WHERE campaign_id = ?1 AND is_delivered = 1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.pending_bags = stats.total_bags.saturating_sub(stats.delivered_bags);
+
+    stats.progress_percentage = if stats.total_bags > 0 {
+        ((stats.delivered_bags as f64 / stats.total_bags as f64) * 1000.0).round() / 10.0
+    } else {
+        0.0
+    };
+
+    stats.primary_delivered = conn.query_row(
+        "SELECT COALESCE(SUM(primary_count), 0) FROM campaign_records WHERE campaign_id = ?1 AND is_delivered = 1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.middle_delivered = conn.query_row(
+        "SELECT COALESCE(SUM(middle_count), 0) FROM campaign_records WHERE campaign_id = ?1 AND is_delivered = 1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    stats.secondary_delivered = conn.query_row(
+        "SELECT COALESCE(SUM(secondary_count), 0) FROM campaign_records WHERE campaign_id = ?1 AND is_delivered = 1",
+        params![campaign_id],
+        |r| r.get(0)
+    ).unwrap_or(0);
+
+    Ok(stats)
+}
+
+#[tauri::command]
+fn toggle_delivery_status(state: State<AppState>, record_id: i64) -> Result<(bool, Option<String>), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let current_delivered: i64 = conn.query_row(
+        "SELECT COALESCE(is_delivered, 0) FROM campaign_records WHERE id = ?1",
+        params![record_id],
+        |r| r.get(0),
+    ).map_err(|e| format!("السجل غير موجود: {}", e))?;
+
+    let new_delivered = current_delivered == 0;
+    if new_delivered {
+        conn.execute(
+            "UPDATE campaign_records 
+             SET is_delivered = 1, 
+                 delivered_at = strftime('%Y-%m-%d %H:%M', 'now', 'localtime') 
+             WHERE id = ?1",
+            params![record_id],
+        ).map_err(|e| e.to_string())?;
+        let timestamp: Option<String> = conn.query_row(
+            "SELECT delivered_at FROM campaign_records WHERE id = ?1",
+            params![record_id],
+            |r| r.get(0),
+        ).optional().unwrap_or(None);
+        Ok((true, timestamp))
+    } else {
+        conn.execute(
+            "UPDATE campaign_records SET is_delivered = 0, delivered_at = NULL WHERE id = ?1",
+            params![record_id],
+        ).map_err(|e| e.to_string())?;
+        Ok((false, None))
+    }
+}
+
+#[tauri::command]
+fn bulk_set_delivery_status(state: State<AppState>, record_ids: Vec<i64>, is_delivered: bool) -> Result<usize, String> {
+    if record_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut count = 0;
+    {
+        if is_delivered {
+            let mut stmt = tx.prepare(
+                "UPDATE campaign_records 
+                 SET is_delivered = 1, 
+                     delivered_at = COALESCE(delivered_at, strftime('%Y-%m-%d %H:%M', 'now', 'localtime')) 
+                 WHERE id = ?1"
+            ).map_err(|e| e.to_string())?;
+            for id in &record_ids {
+                count += stmt.execute(params![id]).map_err(|e| e.to_string())?;
+            }
+        } else {
+            let mut stmt = tx.prepare(
+                "UPDATE campaign_records SET is_delivered = 0, delivered_at = NULL WHERE id = ?1"
+            ).map_err(|e| e.to_string())?;
+            for id in &record_ids {
+                count += stmt.execute(params![id]).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+#[tauri::command]
+fn import_beneficiaries(state: State<AppState>, campaign_id: i64, items: Vec<BeneficiaryRecord>) -> Result<usize, String> {
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut count = 0;
+    {
+        for item in items {
+            let name = item.guardian_name.trim();
+            if name.is_empty() {
+                continue;
+            }
+
+            let status = if !item.social_status.trim().is_empty() {
+                item.social_status.trim().to_string()
+            } else {
+                "بدون دخل".to_string()
+            };
+
+            let existing: Option<i64> = tx.query_row(
+                "SELECT id FROM guardians WHERE guardian_name = ?1 LIMIT 1",
+                params![name],
+                |r| r.get(0),
+            ).optional().map_err(|e| e.to_string())?;
+
+            let guardian_id = if let Some(gid) = existing {
+                if !item.phone.trim().is_empty() {
+                    let _ = tx.execute("UPDATE guardians SET phone = ?1 WHERE id = ?2", params![item.phone.trim(), gid]);
+                }
+                gid
+            } else {
+                tx.execute(
+                    "INSERT INTO guardians (guardian_name, phone, social_status) VALUES (?1, ?2, ?3)",
+                    params![name, item.phone.trim(), status],
+                ).map_err(|e| e.to_string())?;
+                tx.last_insert_rowid()
+            };
+
+            let rec_no = if let Some(nr) = item.record_no {
+                if nr > 0 {
+                    let exists: bool = tx.query_row(
+                        "SELECT COUNT(*) > 0 FROM campaign_records WHERE campaign_id = ?1 AND record_no = ?2",
+                        params![campaign_id, nr],
+                        |r| r.get(0),
+                    ).unwrap_or(false);
+                    if !exists {
+                        nr
+                    } else {
+                        let next_val: i64 = tx.query_row(
+                            "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+                            params![campaign_id],
+                            |r| r.get(0),
+                        ).unwrap_or(0);
+                        next_val + 1
+                    }
+                } else {
+                    let next_val: i64 = tx.query_row(
+                        "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+                        params![campaign_id],
+                        |r| r.get(0),
+                    ).unwrap_or(0);
+                    next_val + 1
+                }
+            } else {
+                let next_val: i64 = tx.query_row(
+                    "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+                    params![campaign_id],
+                    |r| r.get(0),
+                ).unwrap_or(0);
+                next_val + 1
+            };
+
+            tx.execute(
+                "INSERT INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT(campaign_id, guardian_id) DO UPDATE SET
+                 primary_count = excluded.primary_count,
+                 middle_count = excluded.middle_count,
+                 secondary_count = excluded.secondary_count",
+                params![campaign_id, guardian_id, rec_no, item.primary_count.max(0), item.middle_count.max(0), item.secondary_count.max(0)],
+            ).map_err(|e| e.to_string())?;
+
+            count += 1;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
+pub struct ValidatedImportItem {
+    pub guardian_name: String,
+    pub phone: String,
+    pub social_status_id: i64,
+    pub primary_count: i64,
+    pub middle_count: i64,
+    pub secondary_count: i64,
+}
+
+#[tauri::command]
+fn safe_import_records(
+    state: State<AppState>,
+    campaign_id: i64,
+    records: Vec<ValidatedImportItem>,
+) -> Result<usize, String> {
+    if records.is_empty() {
+        return Ok(0);
+    }
+
+    // 1. إنشاء نسخة احتياطية فورية قبل بدء المعاملة
+    let db_path = get_db_path();
+    let backup_path = db_path.with_extension("db.pre_import");
+    if db_path.exists() {
+        let _ = std::fs::copy(&db_path, &backup_path);
+    }
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    // 2. التحقق من وجود الموسم الدراسي المستهدف
+    let campaign_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) > 0 FROM campaigns WHERE id = ?1",
+            rusqlite::params![campaign_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("الموسم الدراسي غير موجود: {}", e))?;
+
+    if !campaign_exists {
+        return Err("معرّف الموسم الدراسي غير صالح أو تم حذفه".into());
+    }
+
+    // 3. بدء المعاملة الذرية (ACID Transaction)
+    let tx = conn.transaction().map_err(|e| format!("فشل بدء المعاملة: {}", e))?;
+
+    let mut success_count = 0;
+    {
+        for r in records {
+            let clean_name = r.guardian_name.trim();
+            if clean_name.is_empty() {
+                continue;
+            }
+
+            let clean_phone = r.phone.trim();
+            let p_count = r.primary_count.clamp(0, 20);
+            let m_count = r.middle_count.clamp(0, 20);
+            let s_count = r.secondary_count.clamp(0, 20);
+
+            // استرجاع اسم الحالة الاجتماعية الموافقة للمعرف
+            let status_name: String = tx.query_row(
+                "SELECT name FROM social_statuses WHERE id = ?1",
+                rusqlite::params![r.social_status_id],
+                |row| row.get(0),
+            ).unwrap_or_else(|_| "بدون دخل".to_string());
+
+            // البحث عن الولي بالاسم والهاتف لتفادي تكراره في دليل الأولياء العام
+            let guardian_id: i64 = match tx.query_row(
+                "SELECT id FROM guardians WHERE guardian_name = ?1 AND (phone = ?2 OR ?2 = '') LIMIT 1",
+                rusqlite::params![clean_name, clean_phone],
+                |row| row.get(0),
+            ) {
+                Ok(existing_id) => {
+                    tx.execute(
+                        "UPDATE guardians SET phone = ?1, social_status = ?2, social_status_id = ?3 WHERE id = ?4",
+                        rusqlite::params![clean_phone, status_name, r.social_status_id, existing_id],
+                    ).map_err(|e| e.to_string())?;
+                    existing_id
+                },
+                Err(_) => {
+                    tx.execute(
+                        "INSERT INTO guardians (guardian_name, phone, social_status, social_status_id) VALUES (?1, ?2, ?3, ?4)",
+                        rusqlite::params![clean_name, clean_phone, status_name, r.social_status_id],
+                    ).map_err(|e| format!("خطأ في إضافة ولي الأمر: {}", e))?;
+                    tx.last_insert_rowid()
+                }
+            };
+
+            let next_no: i64 = tx.query_row(
+                "SELECT COALESCE(MAX(record_no), 0) FROM campaign_records WHERE campaign_id = ?1",
+                rusqlite::params![campaign_id],
+                |r| r.get(0),
+            ).unwrap_or(0) + 1;
+
+            // إدراج أو تحديث سجل التوزيع السنوي للموسم المختار
+            tx.execute(
+                "INSERT INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT(campaign_id, guardian_id) DO UPDATE SET
+                    primary_count = excluded.primary_count,
+                    middle_count = excluded.middle_count,
+                    secondary_count = excluded.secondary_count",
+                rusqlite::params![campaign_id, guardian_id, next_no, p_count, m_count, s_count],
+            ).map_err(|e| format!("خطأ في تسجيل بيانات التوزيع السنوي: {}", e))?;
+
+            success_count += 1;
+        }
+    }
+
+    // 4. تأكيد المعاملة النهائي
+    tx.commit().map_err(|e| {
+        if backup_path.exists() {
+            let _ = std::fs::copy(&backup_path, &db_path);
+        }
+        format!("فشل تثبيت البيانات وتم التراجع عن كافة التغييرات: {}", e)
+    })?;
+
+    // حذف ملف النسخة المؤقتة بعد النجاح
+    if backup_path.exists() {
+        let _ = std::fs::remove_file(&backup_path);
+    }
+
+    Ok(success_count)
+}
+
+#[tauri::command]
+fn batch_import_records(state: State<AppState>, campaign_id: i64, records: Vec<BeneficiaryRecord>) -> Result<usize, String> {
+    import_beneficiaries(state, campaign_id, records)
+}
+
+#[tauri::command]
+fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let settings = conn.query_row(
+        "SELECT id, org_name, branch_name, wilaya, commune, phone, footer_text FROM organization_settings WHERE id = 1",
+        [],
+        |row| {
+            Ok(OrgSettings {
+                id: Some(row.get(0)?),
+                org_name: row.get(1)?,
+                branch_name: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                wilaya: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                commune: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
+                phone: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
+                footer_text: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
+            })
+        },
+    ).optional().map_err(|e| e.to_string())?;
+
+    Ok(settings.unwrap_or_else(|| OrgSettings {
+        id: Some(1),
+        org_name: "الجمعية الخيرية لرعاية الأيتام والمحتاجين".into(),
+        branch_name: "المكتب الولائي".into(),
+        wilaya: "قسنطينة".into(),
+        commune: "".into(),
+        phone: "".into(),
+        footer_text: "وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.".into(),
+    }))
+}
+
+#[tauri::command]
+fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO organization_settings (id, org_name, branch_name, wilaya, commune, phone, footer_text)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(id) DO UPDATE SET
+         org_name = excluded.org_name,
+         branch_name = excluded.branch_name,
+         wilaya = excluded.wilaya,
+         commune = excluded.commune,
+         phone = excluded.phone,
+         footer_text = excluded.footer_text",
+        params![
+            settings.org_name.trim(),
+            settings.branch_name.trim(),
+            settings.wilaya.trim(),
+            settings.commune.trim(),
+            settings.phone.trim(),
+            settings.footer_text.trim(),
+        ],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn write_binary_file(path: String, contents: Vec<u8>) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| format!("فشل حفظ الملف: {}", e))
+}
+
+#[tauri::command]
+fn get_social_statuses(state: State<AppState>) -> Result<Vec<SocialStatusItem>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT s.id, s.name, COUNT(g.id) as count, s.created_at
+         FROM social_statuses s
+         LEFT JOIN guardians g ON g.social_status = s.name
+         GROUP BY s.id, s.name
+         ORDER BY s.id ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(SocialStatusItem {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            count: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for r in rows {
+        if let Ok(item) = r {
+            list.push(item);
+        }
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+fn create_social_status(state: State<AppState>, name: String) -> Result<SocialStatusItem, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("اسم الحالة الاجتماعية مطلوب".into());
+    }
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO social_statuses (name) VALUES (?1)",
+        params![name]
+    ).map_err(|e| format!("فشل إضافة الحالة الاجتماعية (قد تكون موجودة مسبقاً): {}", e))?;
+
+    let id = conn.last_insert_rowid();
+    Ok(SocialStatusItem {
+        id,
+        name: name.to_string(),
+        count: 0,
+        created_at: None,
+    })
+}
+
+#[tauri::command]
+fn update_social_status(state: State<AppState>, id: i64, new_name: String) -> Result<(), String> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err("اسم الحالة الاجتماعية لا يمكن أن يكون فارغاً".into());
+    }
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let old_name: String = tx.query_row(
+        "SELECT name FROM social_statuses WHERE id = ?1",
+        params![id],
+        |row| row.get(0)
+    ).map_err(|_| "الحالة الاجتماعية غير موجودة".to_string())?;
+
+    tx.execute(
+        "UPDATE social_statuses SET name = ?1 WHERE id = ?2",
+        params![new_name, id]
+    ).map_err(|e| format!("فشل تعديل الاسم (قد يكون الاسم مكرراً): {}", e))?;
+
+    // Cascade rename to guardians table so existing records remain linked!
+    tx.execute(
+        "UPDATE guardians SET social_status = ?1 WHERE social_status = ?2",
+        params![new_name, old_name]
+    ).map_err(|e| format!("فشل تحديث سجلات المستفيدين: {}", e))?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_social_status(state: State<AppState>, id: i64) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    
+    let name: String = conn.query_row(
+        "SELECT name FROM social_statuses WHERE id = ?1",
+        params![id],
+        |row| row.get(0)
+    ).map_err(|_| "الحالة الاجتماعية غير موجودة".to_string())?;
+
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM guardians WHERE social_status = ?1",
+        params![name],
+        |row| row.get(0)
+    ).unwrap_or(0);
+
+    if count > 0 {
+        return Err(format!(
+            "لا يمكن حذف الحالة الاجتماعية '{}' لأنها مرتبطة حالياً بـ {} من أولياء الأمور/المستفيدين.",
+            name, count
+        ));
+    }
+
+    conn.execute("DELETE FROM social_statuses WHERE id = ?1", params![id])
+        .map_err(|e| format!("فشل حذف الحالة الاجتماعية: {}", e))?;
+
+    Ok(())
+}
+
+fn get_db_path() -> std::path::PathBuf {
+    // 1. If running in development (inside the project repo)
+    if let Ok(cur) = std::env::current_dir() {
+        if cur.join("src-tauri").exists() {
+            // Running from project root
+            let target = cur.join("school_aid.db");
+            let legacy = cur.join("src-tauri").join("school_aid.db");
+            if legacy.exists() && !target.exists() {
+                let _ = std::fs::copy(&legacy, &target);
+                let _ = std::fs::remove_file(&legacy);
+            }
+            return target;
+        } else if cur.ends_with("src-tauri") {
+            // Running with CWD inside src-tauri
+            if let Some(parent) = cur.parent() {
+                let target = parent.join("school_aid.db");
+                let legacy = cur.join("school_aid.db");
+                if legacy.exists() && !target.exists() {
+                    let _ = std::fs::copy(&legacy, &target);
+                    let _ = std::fs::remove_file(&legacy);
+                }
+                return target;
+            }
+        }
+    }
+
+    // 2. Production fallback: place next to executable
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            let s = parent.to_string_lossy();
+            if s.contains("target") {
+                if let Ok(cur) = std::env::current_dir() {
+                    if cur.ends_with("src-tauri") {
+                        if let Some(p) = cur.parent() {
+                            return p.join("school_aid.db");
+                        }
+                    }
+                    return cur.join("school_aid.db");
+                }
+            }
+            return parent.join("school_aid.db");
+        }
+    }
+
+    std::path::PathBuf::from("school_aid.db")
+}
+
+fn main() {
+    let db_path = get_db_path();
+    let conn = Connection::open(&db_path).expect("فشل في فتح قاعدة البيانات");
+    
+    conn.execute_batch("
+        PRAGMA foreign_keys = ON;
+
+        CREATE TABLE IF NOT EXISTS guardians (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guardian_name TEXT NOT NULL,
+            phone TEXT,
+            social_status TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS social_statuses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT OR IGNORE INTO social_statuses (name) VALUES 
+        ('بدون دخل'), 
+        ('ضعيف الدخل'), 
+        ('متقاعد'), 
+        ('مرض مزمن'), 
+        ('إعاقة');
+
+        CREATE TABLE IF NOT EXISTS campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year_label TEXT NOT NULL UNIQUE,
+            is_active BOOLEAN DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS campaign_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER NOT NULL,
+            guardian_id INTEGER NOT NULL,
+            record_no INTEGER,
+            primary_count INTEGER DEFAULT 0,
+            middle_count INTEGER DEFAULT 0,
+            secondary_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+            FOREIGN KEY(guardian_id) REFERENCES guardians(id) ON DELETE CASCADE,
+            UNIQUE(campaign_id, guardian_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS guardian_children (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guardian_id INTEGER NOT NULL,
+            child_name TEXT NOT NULL,
+            birth_date TEXT,
+            is_schooling BOOLEAN DEFAULT 1,
+            education_level TEXT,
+            school_name TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(guardian_id) REFERENCES guardians(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS organization_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            org_name TEXT NOT NULL DEFAULT 'اسم الجمعية الخيرية',
+            branch_name TEXT DEFAULT 'المكتب الولائي / البلدي',
+            wilaya TEXT DEFAULT 'قسنطينة',
+            commune TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            footer_text TEXT DEFAULT 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.'
+        );
+
+        INSERT OR IGNORE INTO organization_settings (id, org_name, branch_name, wilaya, phone) 
+        VALUES (1, 'الجمعية الخيرية لرعاية الأيتام والمحتاجين', 'المكتب الولائي', 'قسنطينة', '');
+    ").unwrap();
+
+    let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN record_no INTEGER", []);
+    let _ = conn.execute(
+        "UPDATE campaign_records SET record_no = (
+            SELECT COUNT(*) FROM campaign_records cr2 
+            WHERE cr2.campaign_id = campaign_records.campaign_id AND cr2.id <= campaign_records.id
+         ) WHERE record_no IS NULL",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_records_no ON campaign_records(campaign_id, record_no)",
+        [],
+    );
+
+    let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN is_delivered INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN delivered_at TEXT", []);
+
+    let table_sql: Option<String> = conn.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='guardians'",
+        [],
+        |r| r.get(0),
+    ).optional().unwrap_or(None);
+
+    if let Some(sql) = table_sql {
+        if sql.contains("CHECK(social_status IN") {
+            let _ = conn.execute_batch("
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE IF NOT EXISTS guardians_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    guardian_name TEXT NOT NULL,
+                    phone TEXT,
+                    social_status TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT OR IGNORE INTO guardians_new (id, guardian_name, phone, social_status, created_at)
+                SELECT id, guardian_name, phone, social_status, created_at FROM guardians;
+                DROP TABLE guardians;
+                ALTER TABLE guardians_new RENAME TO guardians;
+                PRAGMA foreign_keys = ON;
+            ");
+        }
+    }
+
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN social_status_id INTEGER REFERENCES social_statuses(id)", []);
+    let _ = conn.execute("UPDATE guardians SET social_status_id = (SELECT id FROM social_statuses WHERE social_statuses.name = guardians.social_status) WHERE social_status_id IS NULL", []);
+
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN birth_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN birth_place TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN address TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN marital_status TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN father_name TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN mother_name TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN spouse_name TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN monthly_income TEXT", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN children_count INTEGER", []);
+
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM campaigns", [], |r| r.get(0)).unwrap_or(0);
+    if count == 0 {
+        conn.execute(
+            "INSERT INTO campaigns (year_label, is_active) VALUES ('2025/2026', 1)",
+            [],
+        ).unwrap();
+    }
+
+    let legacy_exists: bool = conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='beneficiaries'",
+        [],
+        |_| Ok(true)
+    ).unwrap_or(false);
+
+    if legacy_exists {
+        let first_campaign_id: i64 = conn.query_row(
+            "SELECT id FROM campaigns ORDER BY id ASC LIMIT 1",
+            [],
+            |r| r.get(0)
+        ).unwrap_or(1);
+
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO guardians (id, guardian_name, phone, social_status, created_at)
+             SELECT id, guardian_name, phone, social_status, created_at FROM beneficiaries",
+            [],
+        );
+
+        let _ = conn.execute(
+            &format!(
+                "INSERT OR IGNORE INTO campaign_records (campaign_id, guardian_id, primary_count, middle_count, secondary_count, created_at)
+                 SELECT {}, id, primary_count, middle_count, secondary_count, created_at FROM beneficiaries",
+                first_campaign_id
+            ),
+            [],
+        );
+
+        let _ = conn.execute("ALTER TABLE beneficiaries RENAME TO beneficiaries_old_backup", []);
+    }
+
+    tauri::Builder::default()
+        .manage(AppState { db: Mutex::new(conn) })
+        .invoke_handler(tauri::generate_handler![
+            get_campaigns,
+            create_campaign,
+            rollover_campaign_records,
+            get_next_record_no,
+            get_beneficiaries,
+            get_guardian_children,
+            check_beneficiary_match,
+            save_beneficiary,
+            delete_beneficiary,
+            bulk_delete_beneficiaries,
+            toggle_delivery_status,
+            bulk_set_delivery_status,
+            get_stats,
+            import_beneficiaries,
+            batch_import_records,
+            safe_import_records,
+            get_org_settings,
+            save_org_settings,
+            write_binary_file,
+            get_social_statuses,
+            create_social_status,
+            update_social_status,
+            delete_social_status,
+            get_campaigns_with_counts,
+            get_all_record_numbers,
+            get_social_status_stats,
+            update_campaign_label,
+            delete_campaign,
+            set_active_campaign
+        ])
+        .run(tauri::generate_context!())
+        .expect("خطأ أثناء تشغيل Tauri");
+}

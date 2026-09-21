@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  th, td {
+    border: 1px solid #94a3b8 !important;
+    padding: 5px 6px !important;
+  }
+
+  /* Distinct economical soft pastel colors for educational stages */
+  .col-primary {
+    background-color: #f0fdf4 !important; /* Soft Emerald */
+    color: #14532d !important;
+  }
+  .col-middle {
+    background-color: #fffbeb !important; /* Soft Amber */
+    color: #78350f !important;
+  }
+  .col-secondary {
+    background-color: #f0f9ff !important; /* Soft Sky */
+    color: #0c4a6e !important;
+  }
+  .col-total {
+    background-color: #f5f3ff !important; /* Soft Indigo */
+    color: #3730a3 !important;
+  }
+
+  /* Page break rules */
+  .page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  @page {
+    margin: 8mm 10mm;
+  }
+
+  /* Beneficiary signature column in print */
+  .signature-header {
+    width: 170px !important;
+    min-width: 150px !important;
+    font-weight: 800 !important;
+    font-size: 13px !important;
+    color: #0f172a !important;
+  }
+  .signature-cell {
+    width: 170px !important;
+    min-width: 150px !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0 !important;
+    background-color: #ffffff !important;
+    vertical-align: middle !important;
+  }
+  .signature-box {
+    width: 100%;
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+  .screen-only, .no-print {
+    display: none !important;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+
+
+/* SweetAlert2 RTL & Typography Adjustments */
+.swal2-container {
+  direction: rtl;
+  font-family: inherit;
+}
+
+.swal2-popup {
+  font-family: inherit !important;
+  border-radius: 1.25rem !important;
+}
+
+.swal2-title {
+  font-size: 1.2rem !important;
+  font-weight: 800 !important;
+  color: #1e293b !important;
+}
+
+.swal2-html-container {
+  font-size: 0.95rem !important;
+  color: #475569 !important;
+  line-height: 1.6 !important;
+}
+
+.swal2-actions {
+  gap: 0.5rem;
+}
+
+/* Sidebar Drawer RTL Transitions */
+.slide-drawer-enter-active,
+.slide-drawer-leave-active {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide-drawer-enter-from,
+.slide-drawer-leave-to {
+  transform: translateX(100%);
+}
+
+.fade-backdrop-enter-active,
+.fade-backdrop-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-backdrop-enter-from,
+.fade-backdrop-leave-to {
+  opacity: 0;
+}
+
