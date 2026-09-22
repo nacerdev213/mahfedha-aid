@@ -337,7 +337,7 @@
         <!-- Drawer Footer: info -->
         <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between text-[11px] text-slate-500">
           <span>الموسم الحالي: <strong class="text-indigo-600">{{ activeCampaignLabel }}</strong></span>
-          <span class="font-mono font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded text-[10px]">v1.2.0</span>
+          <span class="font-mono font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded text-[10px]">v1.3.1</span>
         </div>
       </div>
     </transition>
