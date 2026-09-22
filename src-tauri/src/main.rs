@@ -1418,9 +1418,24 @@ fn get_db_path() -> std::path::PathBuf {
 
 fn main() {
     let db_path = get_db_path();
+
+    // Automatic safety backup on startup if DB exists and contains data
+    if db_path.exists() {
+        if let Ok(meta) = std::fs::metadata(&db_path) {
+            if meta.len() > 0 {
+                let backup_path = db_path.with_extension("db.auto_backup");
+                let _ = std::fs::copy(&db_path, &backup_path);
+            }
+        }
+    }
+
     let conn = Connection::open(&db_path).expect("فشل في فتح قاعدة البيانات");
     
     conn.execute_batch("
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA temp_store = MEMORY;
+        PRAGMA cache_size = -64000;
         PRAGMA foreign_keys = ON;
 
         CREATE TABLE IF NOT EXISTS guardians (
@@ -1503,6 +1518,14 @@ fn main() {
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_records_no ON campaign_records(campaign_id, record_no)",
         [],
     );
+
+    // Performance indexes for fast relational lookups, child records, stats, and search
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_children_guardian_id ON guardian_children(guardian_id)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_records_guardian_id ON campaign_records(guardian_id)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_records_campaign_delivered ON campaign_records(campaign_id, is_delivered)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_guardians_name ON guardians(guardian_name)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_guardians_phone ON guardians(phone)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_guardians_social_status_id ON guardians(social_status_id)", []);
 
     let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN is_delivered INTEGER DEFAULT 0", []);
     let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN delivered_at TEXT", []);
