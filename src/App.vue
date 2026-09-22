@@ -273,7 +273,7 @@
             <div class="text-right flex-1">
               <div class="font-bold flex items-center justify-between">
                 <span>فحص تسلسل الأرقام</span>
-                <span v-if="seasonNumbersAnalysis.missingCount > 0" class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                <span v-if="seasonNumbersAnalysis && seasonNumbersAnalysis.missingCount > 0" class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                   {{ seasonNumbersAnalysis.missingCount }} شاغر
                 </span>
               </div>
@@ -3062,14 +3062,48 @@ const openSequenceAuditModal = async () => {
   isSequenceAuditLoading.value = true;
   try {
     const nums = await safeInvoke('get_all_record_numbers', { campaignId: selectedCampaignId.value });
-    dbRecordNumbers.value = nums || [];
+    if (nums && nums.length > 0) {
+      dbRecordNumbers.value = nums;
+    } else {
+      dbRecordNumbers.value = (beneficiaries.value || [])
+        .map(b => Number(b.record_no))
+        .filter(n => Number.isInteger(n) && n > 0);
+    }
   } catch (err) {
     console.error("فشل جلب الأرقام الشاغرة", err);
-    dbRecordNumbers.value = [];
+    dbRecordNumbers.value = (beneficiaries.value || [])
+      .map(b => Number(b.record_no))
+      .filter(n => Number.isInteger(n) && n > 0);
   } finally {
     isSequenceAuditLoading.value = false;
   }
 };
+
+const seasonNumbersAnalysis = computed(() => {
+  const list = beneficiaries.value || [];
+  if (!list.length) {
+    return { missingCount: 0, missing: [] };
+  }
+  const numbers = list
+    .map(b => Number(b.record_no))
+    .filter(n => Number.isInteger(n) && n > 0);
+  if (!numbers.length) {
+    return { missingCount: 0, missing: [] };
+  }
+  const uniqueNumbers = [...new Set(numbers)].sort((a, b) => a - b);
+  const maxNum = uniqueNumbers[uniqueNumbers.length - 1];
+  const presentSet = new Set(uniqueNumbers);
+  const missing = [];
+  for (let i = 1; i <= maxNum; i++) {
+    if (!presentSet.has(i)) {
+      missing.push(i);
+    }
+  }
+  return {
+    missingCount: missing.length,
+    missing
+  };
+});
 
 const sequenceAnalysis = computed(() => {
   const numbers = dbRecordNumbers.value;
