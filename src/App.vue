@@ -2355,22 +2355,36 @@
 
           <!-- Row 5: Education Level Stats (توزيع الأطفال حسب السنة الدراسية) -->
           <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-slate-100 pb-2.5">
               <div class="flex items-center gap-2">
                 <span class="text-base">🏫</span>
                 <h3 class="text-sm font-black text-slate-800">توزيع الأطفال المتمدرسين حسب السنة الدراسية</h3>
               </div>
-              <span class="text-xs text-slate-400 font-medium">إجمالي: {{ educationLevelStore.totalChildrenInStats }} طفل متمدرس</span>
+              <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-mono font-bold">
+                <span class="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <span>✓ مسلّم:</span>
+                  <span>{{ educationLevelStore.totalDeliveredInStats }}</span>
+                </span>
+                <span class="bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <span>⏳ انتظار:</span>
+                  <span>{{ educationLevelStore.totalPendingInStats }}</span>
+                </span>
+                <span class="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                  <span>المجموع:</span>
+                  <span>{{ educationLevelStore.totalChildrenInStats }} طفل</span>
+                </span>
+              </div>
             </div>
 
             <div v-if="educationLevelStats.length > 0">
-              <div v-for="stageKey in educationLevelStore.orderedStages" :key="stageKey" class="mb-3 last:mb-0">
-                <div v-if="educationLevelStore.statsGroupedByStage[stageKey]" class="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
-                  <div class="flex items-center justify-between mb-2">
+              <div v-for="stageKey in educationLevelStore.orderedStages" :key="stageKey" class="mb-3.5 last:mb-0">
+                <div v-if="educationLevelStore.statsGroupedByStage[stageKey]" class="bg-slate-50/60 rounded-xl p-3 border border-slate-200/70">
+                  <!-- Stage Header with Delivered, Pending, and Total -->
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                     <span class="text-xs font-black flex items-center gap-1.5" :class="{
-                      'text-emerald-800': stageKey === 'ابتدائي',
-                      'text-amber-800': stageKey === 'متوسط',
-                      'text-sky-800': stageKey === 'ثانوي'
+                      'text-emerald-900': stageKey === 'ابتدائي',
+                      'text-amber-900': stageKey === 'متوسط',
+                      'text-sky-900': stageKey === 'ثانوي'
                     }">
                       <span class="w-2.5 h-2.5 rounded-full" :class="{
                         'bg-emerald-500': stageKey === 'ابتدائي',
@@ -2379,26 +2393,77 @@
                       }"></span>
                       <span>الطور {{ stageKey }}</span>
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full font-mono" :class="{
-                      'bg-emerald-100 text-emerald-800': stageKey === 'ابتدائي',
-                      'bg-amber-100 text-amber-800': stageKey === 'متوسط',
-                      'bg-sky-100 text-sky-800': stageKey === 'ثانوي'
-                    }">المجموع: {{ educationLevelStore.statsGroupedByStage[stageKey].total }}</span>
+
+                    <div class="flex items-center gap-1.5 font-mono text-[10px] font-bold">
+                      <span class="bg-emerald-100/80 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        مسلّم: {{ educationLevelStore.statsGroupedByStage[stageKey].delivered }}
+                      </span>
+                      <span class="bg-amber-100/80 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full">
+                        انتظار: {{ educationLevelStore.statsGroupedByStage[stageKey].pending }}
+                      </span>
+                      <span class="px-2.5 py-0.5 rounded-full border shadow-2xs" :class="{
+                        'bg-emerald-600 text-white border-emerald-700': stageKey === 'ابتدائي',
+                        'bg-amber-600 text-white border-amber-700': stageKey === 'متوسط',
+                        'bg-sky-600 text-white border-sky-700': stageKey === 'ثانوي'
+                      }">
+                        المجموع: {{ educationLevelStore.statsGroupedByStage[stageKey].total }}
+                      </span>
+                    </div>
                   </div>
+
+                  <!-- Levels Grid -->
                   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                     <div v-for="level in educationLevelStore.statsGroupedByStage[stageKey].levels" :key="level.id"
-                      class="bg-white border rounded-lg p-2 text-center" :class="{
-                        'border-emerald-200/80': stageKey === 'ابتدائي',
-                        'border-amber-200/80': stageKey === 'متوسط',
-                        'border-sky-200/80': stageKey === 'ثانوي'
+                      class="bg-white border rounded-xl p-2.5 flex flex-col justify-between transition-all hover:shadow-xs" :class="{
+                        'border-emerald-200/90 hover:border-emerald-300': stageKey === 'ابتدائي',
+                        'border-amber-200/90 hover:border-amber-300': stageKey === 'متوسط',
+                        'border-sky-200/90 hover:border-sky-300': stageKey === 'ثانوي'
                       }">
-                      <div class="text-[10px] font-semibold text-slate-500 mb-0.5">{{ level.year_name }}</div>
-                      <div class="text-lg font-black font-mono" :class="{
-                        'text-emerald-700': stageKey === 'ابتدائي',
-                        'text-amber-700': stageKey === 'متوسط',
-                        'text-sky-700': stageKey === 'ثانوي'
-                      }">{{ level.children_count }}</div>
-                      <div class="text-[9px] text-slate-400">طفل</div>
+                      <!-- Year Name & Total Badge -->
+                      <div class="flex items-center justify-between gap-1 mb-2 pb-1.5 border-b border-slate-100">
+                        <span class="text-[11px] font-bold text-slate-700 truncate" :title="level.year_name">
+                          {{ level.year_name }}
+                        </span>
+                        <span class="text-xs font-black font-mono px-1.5 py-0.2 rounded" :class="{
+                          'bg-emerald-50 text-emerald-800 border border-emerald-200/60': stageKey === 'ابتدائي',
+                          'bg-amber-50 text-amber-800 border border-amber-200/60': stageKey === 'متوسط',
+                          'bg-sky-50 text-sky-800 border border-sky-200/60': stageKey === 'ثانوي'
+                        }">
+                          {{ level.children_count }}
+                        </span>
+                      </div>
+
+                      <!-- Sub-boxes: Delivered vs Pending -->
+                      <div class="grid grid-cols-2 gap-1.5 text-center">
+                        <!-- Delivered (مسلم) -->
+                        <div class="bg-emerald-50/70 border border-emerald-200/60 rounded-lg py-1 px-1 flex flex-col items-center">
+                          <span class="text-[9px] text-emerald-700 font-bold leading-tight">مسلّم</span>
+                          <span class="text-xs font-black text-emerald-800 font-mono leading-tight mt-0.5">
+                            {{ level.delivered_count || 0 }}
+                          </span>
+                        </div>
+
+                        <!-- Pending (في الانتظار) -->
+                        <div class="bg-amber-50/70 border border-amber-200/60 rounded-lg py-1 px-1 flex flex-col items-center">
+                          <span class="text-[9px] text-amber-700 font-bold leading-tight">انتظار</span>
+                          <span class="text-xs font-black text-amber-800 font-mono leading-tight mt-0.5">
+                            {{ level.pending_count || 0 }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Delivery Progress Mini-bar -->
+                      <div class="w-full bg-slate-100 rounded-full h-1 mt-2 overflow-hidden" :title="`${level.children_count > 0 ? Math.round(((level.delivered_count || 0) / level.children_count) * 100) : 0}% تم التسليم`">
+                        <div 
+                          class="h-full rounded-full transition-all duration-300"
+                          :class="{
+                            'bg-emerald-500': stageKey === 'ابتدائي',
+                            'bg-amber-500': stageKey === 'متوسط',
+                            'bg-sky-500': stageKey === 'ثانوي'
+                          }"
+                          :style="{ width: `${level.children_count > 0 ? (((level.delivered_count || 0) / level.children_count) * 100) : 0}%` }"
+                        ></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3088,6 +3153,9 @@ watch(() => form.value?.children, (kids) => {
 const openCampaignModal = () => campaignStore.openCampaignModal();
 const onCampaignChange = async () => {
   await beneficiaryStore.fetchData(selectedCampaignId.value);
+  if (showStatsDetailsModal.value) {
+    await educationLevelStore.fetchStats(selectedCampaignId.value);
+  }
 };
 const submitNewCampaign = async () => {
   try {
@@ -3381,6 +3449,9 @@ const remove = async (id) => {
 const toggleDelivery = async (item) => {
   try {
     await beneficiaryStore.toggleDelivery(item.id, selectedCampaignId.value);
+    if (showStatsDetailsModal.value) {
+      educationLevelStore.fetchStats(selectedCampaignId.value);
+    }
   } catch (err) {
     notifyError('خطأ أثناء تحديث حالة الاستلام', err.message || err);
   }

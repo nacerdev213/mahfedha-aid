@@ -145,6 +145,8 @@ pub struct EducationLevelStat {
     pub year_name: String,
     pub year_order: i64,
     pub children_count: i64,
+    pub delivered_count: i64,
+    pub pending_count: i64,
 }
 
 #[tauri::command]
@@ -1545,13 +1547,24 @@ fn delete_education_level(state: State<AppState>, id: i64) -> Result<(), String>
 fn get_education_level_stats(state: State<AppState>, campaign_id: i64) -> Result<Vec<EducationLevelStat>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
-        "SELECT el.id, el.stage, el.year_name, el.year_order, COUNT(gc.id) as children_count
+        "SELECT 
+            el.id, 
+            el.stage, 
+            el.year_name, 
+            el.year_order, 
+            COUNT(c_data.child_id) as children_count,
+            COUNT(CASE WHEN c_data.is_delivered = 1 THEN c_data.child_id END) as delivered_count,
+            COUNT(CASE WHEN c_data.is_delivered = 0 THEN c_data.child_id END) as pending_count
          FROM education_levels el
-         LEFT JOIN guardian_children gc ON gc.education_level_id = el.id 
-           AND gc.is_schooling = 1
-           AND gc.guardian_id IN (
-             SELECT cr.guardian_id FROM campaign_records cr WHERE cr.campaign_id = ?1
-           )
+         LEFT JOIN (
+            SELECT 
+                gc.id as child_id,
+                gc.education_level_id,
+                COALESCE(cr.is_delivered, 0) as is_delivered
+            FROM guardian_children gc
+            JOIN campaign_records cr ON cr.guardian_id = gc.guardian_id AND cr.campaign_id = ?1
+            WHERE gc.is_schooling = 1
+         ) c_data ON c_data.education_level_id = el.id
          GROUP BY el.id
          ORDER BY 
            CASE el.stage 
@@ -1570,6 +1583,8 @@ fn get_education_level_stats(state: State<AppState>, campaign_id: i64) -> Result
             year_name: row.get(2)?,
             year_order: row.get(3)?,
             children_count: row.get(4)?,
+            delivered_count: row.get(5)?,
+            pending_count: row.get(6)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -1806,6 +1821,12 @@ fn main() {
 
     // Migration: add education_level_id to guardian_children
     let _ = conn.execute("ALTER TABLE guardian_children ADD COLUMN education_level_id INTEGER REFERENCES education_levels(id)", []);
+    let _ = conn.execute(
+        "UPDATE guardian_children 
+         SET education_level_id = (SELECT id FROM education_levels WHERE year_name = guardian_children.education_level LIMIT 1)
+         WHERE education_level_id IS NULL AND education_level IS NOT NULL",
+        [],
+    );
 
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM campaigns", [], |r| r.get(0)).unwrap_or(0);
     if count == 0 {

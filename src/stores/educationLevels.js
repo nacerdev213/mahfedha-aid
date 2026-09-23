@@ -33,16 +33,32 @@ export const useEducationLevelStore = defineStore('educationLevels', {
       const groups = {};
       for (const stat of state.educationLevelStats) {
         if (!groups[stat.stage]) {
-          groups[stat.stage] = { stage: stat.stage, levels: [], total: 0 };
+          groups[stat.stage] = {
+            stage: stat.stage,
+            levels: [],
+            total: 0,
+            delivered: 0,
+            pending: 0,
+          };
         }
         groups[stat.stage].levels.push(stat);
-        groups[stat.stage].total += stat.children_count;
+        groups[stat.stage].total += (stat.children_count || 0);
+        groups[stat.stage].delivered += (stat.delivered_count || 0);
+        groups[stat.stage].pending += (stat.pending_count || 0);
       }
       return groups;
     },
 
     totalChildrenInStats: (state) => {
-      return state.educationLevelStats.reduce((sum, s) => sum + s.children_count, 0);
+      return state.educationLevelStats.reduce((sum, s) => sum + (s.children_count || 0), 0);
+    },
+
+    totalDeliveredInStats: (state) => {
+      return state.educationLevelStats.reduce((sum, s) => sum + (s.delivered_count || 0), 0);
+    },
+
+    totalPendingInStats: (state) => {
+      return state.educationLevelStats.reduce((sum, s) => sum + (s.pending_count || 0), 0);
     },
   },
 
