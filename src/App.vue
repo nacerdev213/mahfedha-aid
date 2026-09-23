@@ -324,6 +324,15 @@
             </div>
           </button>
 
+          <button @click="openEducationLevelModal(); closeSidebar()"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-transparent hover:border-emerald-200 transition group cursor-pointer">
+            <span class="text-xl group-hover:scale-110 transition-transform">🏫</span>
+            <div class="text-right">
+              <div class="font-bold">الأطوار الدراسية</div>
+              <div class="text-[11px] text-slate-400 font-normal">إدارة السنوات والمراحل التعليمية</div>
+            </div>
+          </button>
+
           <button @click="openCampaignMgmtModal(); closeSidebar()"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-700 border border-transparent hover:border-teal-200 transition group cursor-pointer">
             <span class="text-xl group-hover:scale-110 transition-transform">📅</span>
@@ -337,7 +346,7 @@
         <!-- Drawer Footer: info -->
         <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between text-[11px] text-slate-500">
           <span>الموسم الحالي: <strong class="text-indigo-600">{{ activeCampaignLabel }}</strong></span>
-          <span class="font-mono font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded text-[10px]">v1.3.1</span>
+          <span class="font-mono font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded text-[10px]">v1.4.0</span>
         </div>
       </div>
     </transition>
@@ -1031,11 +1040,80 @@
               <!-- Children Table -->
               <div class="mt-4 pt-4 border-t border-indigo-100">
                 <div class="flex items-center justify-between mb-2">
-                  <label class="font-bold text-slate-700">بيانات الأطفال المتمدرسين (اختياري)</label>
-                  <button type="button" @click="addChild" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[11px] px-2 py-1 rounded shadow-2xs font-bold transition">
+                  <div>
+                    <label class="font-bold text-slate-700">بيانات الأطفال (متمدرسين وغير متمدرسين)</label>
+                    <p class="text-[11px] text-slate-500">
+                      يمكن تسجيل أطفال غير متمدرسين، ولكن الأطفال المتمدرسين لا يمكن أن يتجاوزوا عدد المحافظ المحددة لكل طور.
+                    </p>
+                  </div>
+                  <button type="button" @click="addChild" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[11px] px-2.5 py-1 rounded shadow-2xs font-bold transition cursor-pointer shrink-0">
                     + إضافة طفل
                   </button>
                 </div>
+
+                <!-- Live Consistency Status Bar -->
+                <div class="flex flex-wrap items-center gap-2 mb-2.5 p-2 bg-slate-50 border rounded-xl text-[11px]"
+                  :class="stageConsistencyError ? 'border-red-300 bg-red-50/50' : 'border-slate-200'">
+                  <span class="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                    <span>🎒</span>
+                    <span>تناسق المحافظ:</span>
+                  </span>
+
+                  <!-- Primary Stage Badge -->
+                  <div class="px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold flex items-center gap-1 border transition"
+                    :class="{
+                      'bg-red-100 text-red-800 border-red-300 ring-1 ring-red-400': schooledChildrenCountByStage['ابتدائي'] > stageBagsLimit['ابتدائي'],
+                      'bg-emerald-100 text-emerald-800 border-emerald-300': schooledChildrenCountByStage['ابتدائي'] === stageBagsLimit['ابتدائي'] && stageBagsLimit['ابتدائي'] > 0,
+                      'bg-white text-slate-700 border-slate-200': schooledChildrenCountByStage['ابتدائي'] < stageBagsLimit['ابتدائي'] && stageBagsLimit['ابتدائي'] > 0,
+                      'bg-slate-100 text-slate-400 border-slate-200': stageBagsLimit['ابتدائي'] === 0
+                    }">
+                    <span>ابتدائي:</span>
+                    <span>{{ schooledChildrenCountByStage['ابتدائي'] }}/{{ stageBagsLimit['ابتدائي'] }}</span>
+                    <span v-if="schooledChildrenCountByStage['ابتدائي'] > stageBagsLimit['ابتدائي']" class="text-red-700">⚠️ تجاوز!</span>
+                    <span v-else-if="schooledChildrenCountByStage['ابتدائي'] === stageBagsLimit['ابتدائي'] && stageBagsLimit['ابتدائي'] > 0" class="text-emerald-700">✓</span>
+                  </div>
+
+                  <!-- Middle Stage Badge -->
+                  <div class="px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold flex items-center gap-1 border transition"
+                    :class="{
+                      'bg-red-100 text-red-800 border-red-300 ring-1 ring-red-400': schooledChildrenCountByStage['متوسط'] > stageBagsLimit['متوسط'],
+                      'bg-amber-100 text-amber-800 border-amber-300': schooledChildrenCountByStage['متوسط'] === stageBagsLimit['متوسط'] && stageBagsLimit['متوسط'] > 0,
+                      'bg-white text-slate-700 border-slate-200': schooledChildrenCountByStage['متوسط'] < stageBagsLimit['متوسط'] && stageBagsLimit['متوسط'] > 0,
+                      'bg-slate-100 text-slate-400 border-slate-200': stageBagsLimit['متوسط'] === 0
+                    }">
+                    <span>متوسط:</span>
+                    <span>{{ schooledChildrenCountByStage['متوسط'] }}/{{ stageBagsLimit['متوسط'] }}</span>
+                    <span v-if="schooledChildrenCountByStage['متوسط'] > stageBagsLimit['متوسط']" class="text-red-700">⚠️ تجاوز!</span>
+                    <span v-else-if="schooledChildrenCountByStage['متوسط'] === stageBagsLimit['متوسط'] && stageBagsLimit['متوسط'] > 0" class="text-amber-700">✓</span>
+                  </div>
+
+                  <!-- Secondary Stage Badge -->
+                  <div class="px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold flex items-center gap-1 border transition"
+                    :class="{
+                      'bg-red-100 text-red-800 border-red-300 ring-1 ring-red-400': schooledChildrenCountByStage['ثانوي'] > stageBagsLimit['ثانوي'],
+                      'bg-sky-100 text-sky-800 border-sky-300': schooledChildrenCountByStage['ثانوي'] === stageBagsLimit['ثانوي'] && stageBagsLimit['ثانوي'] > 0,
+                      'bg-white text-slate-700 border-slate-200': schooledChildrenCountByStage['ثانوي'] < stageBagsLimit['ثانوي'] && stageBagsLimit['ثانوي'] > 0,
+                      'bg-slate-100 text-slate-400 border-slate-200': stageBagsLimit['ثانوي'] === 0
+                    }">
+                    <span>ثانوي:</span>
+                    <span>{{ schooledChildrenCountByStage['ثانوي'] }}/{{ stageBagsLimit['ثانوي'] }}</span>
+                    <span v-if="schooledChildrenCountByStage['ثانوي'] > stageBagsLimit['ثانوي']" class="text-red-700">⚠️ تجاوز!</span>
+                    <span v-else-if="schooledChildrenCountByStage['ثانوي'] === stageBagsLimit['ثانوي'] && stageBagsLimit['ثانوي'] > 0" class="text-sky-700">✓</span>
+                  </div>
+
+                  <!-- Non-schooling Badge -->
+                  <div v-if="schooledChildrenCountByStage.nonSchooling > 0"
+                    class="px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold bg-slate-200/70 text-slate-600 border border-slate-300">
+                    غير متمدرسين: {{ schooledChildrenCountByStage.nonSchooling }} (بدون محفظة)
+                  </div>
+                </div>
+
+                <!-- Error Warning Alert if in conflict -->
+                <div v-if="stageConsistencyError" class="mb-2 p-2.5 bg-red-100/90 border border-red-300 rounded-lg text-xs text-red-800 font-bold flex items-center gap-2">
+                  <span class="text-sm">⚠️</span>
+                  <span>{{ stageConsistencyError }}</span>
+                </div>
+
                 <div v-if="form.children && form.children.length > 0" class="overflow-x-auto">
                   <table class="w-full text-xs text-right border border-slate-200 rounded-lg overflow-hidden">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600">
@@ -1044,7 +1122,7 @@
                         <th class="p-2">الاسم</th>
                         <th class="p-2 w-28">تاريخ الميلاد</th>
                         <th class="p-2 w-16 text-center">متمدرس؟</th>
-                        <th class="p-2 w-28">المستوى</th>
+                        <th class="p-2 w-36">المستوى الدراسي</th>
                         <th class="p-2 w-32">المؤسسة</th>
                         <th class="p-2 w-10 text-center">حذف</th>
                       </tr>
@@ -1059,10 +1137,32 @@
                           <input type="text" v-model="child.birth_date" placeholder="تاريخ الميلاد" class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 focus:outline-none py-1" />
                         </td>
                         <td class="p-1.5 text-center">
-                          <input type="checkbox" v-model="child.is_schooling" class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                          <input type="checkbox" v-model="child.is_schooling" @change="onSchoolingToggle(child)" class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" />
                         </td>
                         <td class="p-1.5">
-                          <input type="text" v-model="child.education_level" placeholder="مثال: س3 ابتدائي" class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 focus:outline-none py-1" :disabled="!child.is_schooling" :class="{'opacity-50 cursor-not-allowed': !child.is_schooling}" />
+                          <select 
+                            v-model="child.education_level_id" 
+                            @change="onChildLevelChange(child)"
+                            class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 focus:outline-none py-1 text-xs cursor-pointer" 
+                            :disabled="!child.is_schooling" 
+                            :class="{'opacity-50 cursor-not-allowed': !child.is_schooling}">
+                            <option :value="null">-- اختر المستوى --</option>
+                            <optgroup 
+                              v-for="stage in educationLevelStore.orderedStages" 
+                              :key="stage" 
+                              :label="'طور ال' + stage + ' (' + getStageSlotInfo(stage, child) + ')'"
+                            >
+                              <option 
+                                v-for="lvl in educationLevelStore.groupedByStage[stage]" 
+                                :key="lvl.id" 
+                                :value="lvl.id"
+                                :disabled="isStageDisabledForChild(stage, child) && child.education_level_id !== lvl.id"
+                                :class="{'text-slate-400': isStageDisabledForChild(stage, child) && child.education_level_id !== lvl.id}"
+                              >
+                                {{ lvl.year_name }} {{ (isStageDisabledForChild(stage, child) && child.education_level_id !== lvl.id) ? '(المقاعد مكتملة)' : '' }}
+                              </option>
+                            </optgroup>
+                          </select>
                         </td>
                         <td class="p-1.5">
                           <input type="text" v-model="child.school_name" placeholder="المؤسسة" class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 focus:outline-none py-1" :disabled="!child.is_schooling" :class="{'opacity-50 cursor-not-allowed': !child.is_schooling}" />
@@ -1429,6 +1529,115 @@
           </p>
           <button @click="showStatusModal = false"
             class="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">إغلاق</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Education Levels Management Modal (Protected Lookup Table by Educational Stage) -->
+    <div v-if="showEducationLevelModal"
+      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-200 text-right">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              🏫 إدارة الأطوار والسنوات الدراسية
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">تخصيص السنوات والمراحل التعليمية مع حماية السجلات المرتبطة بأطفال</p>
+          </div>
+          <button @click="closeEducationLevelModal" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">✕</button>
+        </div>
+
+        <!-- Add New Education Level Form -->
+        <form @submit.prevent="addEducationLevel" class="flex flex-wrap sm:flex-nowrap gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <select v-model="newEduStage" class="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shrink-0 font-bold">
+            <option value="ابتدائي">ابتدائي</option>
+            <option value="متوسط">متوسط</option>
+            <option value="ثانوي">ثانوي</option>
+          </select>
+          <input v-model="newEduYearName" type="text" placeholder="اسم السنة (مثال: السنة الأولى ابتدائي، سنة 1 متوسط...)"
+            class="flex-1 text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            required />
+          <input v-model.number="newEduYearOrder" type="number" min="1" max="10" placeholder="الترتيب" title="ترتيب السنة داخل الطور"
+            class="w-16 text-xs text-center border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+            required />
+          <button type="submit"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-xs flex items-center gap-1 shrink-0 cursor-pointer">
+            + إضافة سنة
+          </button>
+        </form>
+
+        <!-- Education Levels List Grouped by Stage -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto mb-4 divide-y divide-slate-200">
+          <div v-for="stage in educationLevelStore.orderedStages" :key="stage" class="p-3 bg-white">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full" :class="{
+                'bg-emerald-100 text-emerald-800': stage === 'ابتدائي',
+                'bg-amber-100 text-amber-800': stage === 'متوسط',
+                'bg-sky-100 text-sky-800': stage === 'ثانوي'
+              }">
+                الطور ال{{ stage }}
+              </span>
+              <span class="text-[11px] text-slate-400 font-mono">
+                {{ educationLevelStore.groupedByStage[stage]?.length || 0 }} سنوات
+              </span>
+            </div>
+
+            <div class="space-y-1.5">
+              <div v-for="item in educationLevelStore.groupedByStage[stage]" :key="item.id"
+                class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 border border-slate-100 transition text-xs">
+                
+                <!-- Editing or View Name -->
+                <div class="flex-1 ml-2">
+                  <div v-if="editingEduId === item.id" class="flex items-center gap-1.5">
+                    <input v-model="editingEduName" type="text"
+                      class="text-xs border border-emerald-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      @keyup.enter="saveEditEdu(item)" @keyup.esc="cancelEditEdu" />
+                    <button @click="saveEditEdu(item)" class="text-emerald-600 hover:text-emerald-700 px-1 font-bold cursor-pointer" title="حفظ">✓</button>
+                    <button @click="cancelEditEdu" class="text-slate-400 hover:text-slate-600 px-1 font-bold cursor-pointer" title="إلغاء">✕</button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <span class="font-bold text-slate-800">{{ item.year_name }}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">#{{ item.year_order }}</span>
+                  </div>
+                </div>
+
+                <!-- Children Count Badge & Actions -->
+                <div class="flex items-center gap-3 shrink-0">
+                  <span
+                    :class="item.count > 0 ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200'"
+                    class="border text-[10px] font-bold px-2 py-0.5 rounded-full inline-block font-mono">
+                    {{ item.count }} طفل
+                  </span>
+
+                  <div class="flex items-center gap-1" v-if="editingEduId !== item.id">
+                    <button @click="startEditEdu(item)"
+                      class="text-slate-500 hover:text-emerald-600 p-1 hover:bg-slate-100 rounded transition cursor-pointer"
+                      title="تعديل التسمية">
+                      ✏️
+                    </button>
+                    <button @click="deleteEducationLevel(item)" :disabled="item.count > 0"
+                      :title="item.count > 0 ? 'محمية من الحذف: مرتبطة بـ ' + item.count + ' طفل' : 'حذف السنة'"
+                      :class="item.count > 0 ? 'opacity-30 cursor-not-allowed text-slate-400' : 'text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition cursor-pointer'">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Notice -->
+        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+          <p class="text-[11px] text-slate-400">
+            🔒 السنوات المرتبطة بأطفال مستفيدين تكون محمية تلقائياً للحفاظ على سلامة الإحصائيات.
+          </p>
+          <button @click="closeEducationLevelModal"
+            class="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">إغلاق</button>
         </div>
 
       </div>
@@ -2144,6 +2353,62 @@
             </div>
           </div>
 
+          <!-- Row 5: Education Level Stats (توزيع الأطفال حسب السنة الدراسية) -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
+            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🏫</span>
+                <h3 class="text-sm font-black text-slate-800">توزيع الأطفال المتمدرسين حسب السنة الدراسية</h3>
+              </div>
+              <span class="text-xs text-slate-400 font-medium">إجمالي: {{ educationLevelStore.totalChildrenInStats }} طفل متمدرس</span>
+            </div>
+
+            <div v-if="educationLevelStats.length > 0">
+              <div v-for="stageKey in educationLevelStore.orderedStages" :key="stageKey" class="mb-3 last:mb-0">
+                <div v-if="educationLevelStore.statsGroupedByStage[stageKey]" class="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-black flex items-center gap-1.5" :class="{
+                      'text-emerald-800': stageKey === 'ابتدائي',
+                      'text-amber-800': stageKey === 'متوسط',
+                      'text-sky-800': stageKey === 'ثانوي'
+                    }">
+                      <span class="w-2.5 h-2.5 rounded-full" :class="{
+                        'bg-emerald-500': stageKey === 'ابتدائي',
+                        'bg-amber-500': stageKey === 'متوسط',
+                        'bg-sky-500': stageKey === 'ثانوي'
+                      }"></span>
+                      <span>الطور {{ stageKey }}</span>
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full font-mono" :class="{
+                      'bg-emerald-100 text-emerald-800': stageKey === 'ابتدائي',
+                      'bg-amber-100 text-amber-800': stageKey === 'متوسط',
+                      'bg-sky-100 text-sky-800': stageKey === 'ثانوي'
+                    }">المجموع: {{ educationLevelStore.statsGroupedByStage[stageKey].total }}</span>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    <div v-for="level in educationLevelStore.statsGroupedByStage[stageKey].levels" :key="level.id"
+                      class="bg-white border rounded-lg p-2 text-center" :class="{
+                        'border-emerald-200/80': stageKey === 'ابتدائي',
+                        'border-amber-200/80': stageKey === 'متوسط',
+                        'border-sky-200/80': stageKey === 'ثانوي'
+                      }">
+                      <div class="text-[10px] font-semibold text-slate-500 mb-0.5">{{ level.year_name }}</div>
+                      <div class="text-lg font-black font-mono" :class="{
+                        'text-emerald-700': stageKey === 'ابتدائي',
+                        'text-amber-700': stageKey === 'متوسط',
+                        'text-sky-700': stageKey === 'ثانوي'
+                      }">{{ level.children_count }}</div>
+                      <div class="text-[9px] text-slate-400">طفل</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-6 text-slate-400 text-xs">
+              لا توجد بيانات أطفال متمدرسين مسجلة في هذا الموسم حالياً.
+            </div>
+          </div>
+
         </div>
 
         <!-- Modal Footer -->
@@ -2184,6 +2449,7 @@ import { useCampaignStore } from './stores/campaigns';
 import { useSocialStatusStore } from './stores/socialStatuses';
 import { useOrganizationStore } from './stores/organization';
 import { useBeneficiaryStore } from './stores/beneficiaries';
+import { useEducationLevelStore } from './stores/educationLevels';
 import ImportModal from './components/ImportModal.vue';
 import SchoolFormPrint from './components/SchoolFormPrint.vue';
 import {
@@ -2205,6 +2471,16 @@ const campaignStore = useCampaignStore();
 const statusStore = useSocialStatusStore();
 const orgStore = useOrganizationStore();
 const beneficiaryStore = useBeneficiaryStore();
+const educationLevelStore = useEducationLevelStore();
+
+// Education levels reactive store properties
+const { educationLevels, educationLevelStats } = storeToRefs(educationLevelStore);
+const showEducationLevelModal = ref(false);
+const newEduStage = ref('ابتدائي');
+const newEduYearName = ref('');
+const newEduYearOrder = ref(1);
+const editingEduId = ref(null);
+const editingEduName = ref('');
 
 // Reactive store properties via storeToRefs
 const { campaigns, selectedCampaignId, showCampaignModal, newCampaignYear, rolloverPrevious, activeCampaignLabel } = storeToRefs(campaignStore);
@@ -2309,12 +2585,15 @@ const secondaryPercentage = computed(() => {
 const openStatsDetailsModal = async () => {
   showStatsDetailsModal.value = true;
   try {
-    const stats = await safeInvoke('get_social_status_stats', { campaignId: selectedCampaignId.value });
+    const [statsData] = await Promise.all([
+      safeInvoke('get_social_status_stats', { campaignId: selectedCampaignId.value }),
+      educationLevelStore.fetchStats(selectedCampaignId.value),
+    ]);
     
     // Calculate total families to compute percentages
-    const totalFamilies = stats.reduce((sum, item) => sum + Number(item.families_count), 0);
+    const totalFamilies = statsData.reduce((sum, item) => sum + Number(item.families_count), 0);
     
-    socialStatusStats.value = stats.map(item => ({
+    socialStatusStats.value = statsData.map(item => ({
       status: item.status,
       familiesCount: item.families_count,
       bagsCount: item.bags_count,
@@ -2605,6 +2884,206 @@ const deleteSocialStatus = async (item) => {
   }
 };
 
+// Education Level Methods
+const openEducationLevelModal = () => {
+  showEducationLevelModal.value = true;
+  educationLevelStore.fetchAll();
+};
+const closeEducationLevelModal = () => {
+  showEducationLevelModal.value = false;
+  editingEduId.value = null;
+  editingEduName.value = '';
+};
+const addEducationLevel = async () => {
+  if (!newEduYearName.value.trim()) {
+    notifyWarning('تنبيه', 'يرجى إدخال اسم السنة الدراسية');
+    return;
+  }
+  try {
+    await educationLevelStore.create(newEduStage.value, newEduYearName.value, newEduYearOrder.value);
+    newEduYearName.value = '';
+    newEduYearOrder.value = 1;
+    toastSuccess('تمت إضافة السنة الدراسية بنجاح');
+  } catch (e) {
+    notifyError('خطأ', e.message || e);
+  }
+};
+const startEditEdu = (item) => {
+  editingEduId.value = item.id;
+  editingEduName.value = item.year_name;
+};
+const cancelEditEdu = () => {
+  editingEduId.value = null;
+  editingEduName.value = '';
+};
+const saveEditEdu = async (item) => {
+  try {
+    await educationLevelStore.update(item.id, editingEduName.value);
+    editingEduId.value = null;
+    editingEduName.value = '';
+    toastSuccess('تم تعديل السنة الدراسية بنجاح');
+  } catch (e) {
+    notifyError('خطأ أثناء التعديل', e.message || e);
+  }
+};
+const deleteEducationLevel = async (item) => {
+  if (item.count > 0) {
+    notifyWarning('لا يمكن الحذف', `لا يمكن حذف السنة الدراسية '${item.year_name}' لأنها مرتبطة حالياً بـ ${item.count} طفل.`);
+    return;
+  }
+  const confirmed = await confirmDelete('حذف السنة الدراسية', `هل أنت متأكد من حذف 'السنة ${item.year_name}'؟`);
+  if (!confirmed) return;
+  try {
+    await educationLevelStore.remove(item.id);
+    toastSuccess(`تم حذف 'السنة ${item.year_name}' بنجاح`);
+  } catch (e) {
+    notifyError('خطأ أثناء الحذف', e.message || e);
+  }
+};
+// Education Stage Bag Consistency Logic
+const stageBagsLimit = computed(() => ({
+  'ابتدائي': Math.max(0, Number(form.value?.primary_count) || 0),
+  'متوسط': Math.max(0, Number(form.value?.middle_count) || 0),
+  'ثانوي': Math.max(0, Number(form.value?.secondary_count) || 0),
+}));
+
+const schooledChildrenCountByStage = computed(() => {
+  const counts = { 'ابتدائي': 0, 'متوسط': 0, 'ثانوي': 0, nonSchooling: 0 };
+  if (!form.value?.children || !Array.isArray(form.value.children)) return counts;
+
+  for (const child of form.value.children) {
+    if (!child.is_schooling) {
+      counts.nonSchooling++;
+      continue;
+    }
+    let stage = null;
+    if (child.education_level_id) {
+      const lvl = educationLevels.value.find(l => l.id === child.education_level_id);
+      if (lvl) stage = lvl.stage;
+    } else if (child.education_level) {
+      if (child.education_level.includes('ابتدائي')) stage = 'ابتدائي';
+      else if (child.education_level.includes('متوسط')) stage = 'متوسط';
+      else if (child.education_level.includes('ثانوي')) stage = 'ثانوي';
+    }
+
+    if (stage && counts[stage] !== undefined) {
+      counts[stage]++;
+    }
+  }
+  return counts;
+});
+
+const stageConsistencyError = computed(() => {
+  const stages = ['ابتدائي', 'متوسط', 'ثانوي'];
+  for (const s of stages) {
+    const cur = schooledChildrenCountByStage.value[s] || 0;
+    const max = stageBagsLimit.value[s] || 0;
+    if (cur > max) {
+      return `عدد الأطفال المتمدرسين في طور (${s}) هو (${cur}) ويتجاوز عدد المحافظ المحددة لهذا الطور (${max}). يرجى مطابقة الأعداد للمتابعة.`;
+    }
+  }
+  return '';
+});
+
+const isStageDisabledForChild = (stage, currentChild) => {
+  const max = stageBagsLimit.value[stage] ?? 0;
+  if (max <= 0) return true; // Stage not requested at all
+
+  let countOther = 0;
+  for (const c of (form.value?.children || [])) {
+    if (c === currentChild) continue;
+    if (c.is_schooling && c.education_level_id) {
+      const lvl = educationLevels.value.find(l => l.id === c.education_level_id);
+      if (lvl && lvl.stage === stage) {
+        countOther++;
+      }
+    }
+  }
+  return countOther >= max;
+};
+
+const getStageSlotInfo = (stage, currentChild) => {
+  const max = stageBagsLimit.value[stage] ?? 0;
+  if (max === 0) return '0 محفظة - غير محدد';
+
+  let countOther = 0;
+  for (const c of (form.value?.children || [])) {
+    if (c === currentChild) continue;
+    if (c.is_schooling && c.education_level_id) {
+      const lvl = educationLevels.value.find(l => l.id === c.education_level_id);
+      if (lvl && lvl.stage === stage) {
+        countOther++;
+      }
+    }
+  }
+  const remaining = Math.max(0, max - countOther);
+  if (remaining === 0) return `مكتمل (${max}/${max})`;
+  return `متاح: ${remaining} من ${max}`;
+};
+
+const onSchoolingToggle = (child) => {
+  if (!child.is_schooling) {
+    child.education_level_id = null;
+    child.education_level = '';
+  }
+};
+
+const onChildLevelChange = (child) => {
+  if (!child.education_level_id) {
+    child.education_level = '';
+    return;
+  }
+  const level = educationLevels.value.find(l => l.id === child.education_level_id);
+  if (!level) return;
+
+  const stage = level.stage;
+  const maxAllowed = stageBagsLimit.value[stage] ?? 0;
+
+  let countOther = 0;
+  for (const c of (form.value?.children || [])) {
+    if (c === child) continue;
+    if (c.is_schooling && c.education_level_id) {
+      const cLvl = educationLevels.value.find(l => l.id === c.education_level_id);
+      if (cLvl && cLvl.stage === stage) {
+        countOther++;
+      }
+    }
+  }
+
+  if (countOther + 1 > maxAllowed) {
+    child.education_level_id = null;
+    child.education_level = '';
+    if (maxAllowed === 0) {
+      notifyWarning(
+        'طور غير محدد في المحافظ',
+        `لم يتم طلب أي محفظة لطور (${stage}) في هذه الاستمارة (العدد المحدد: 0). يرجى زيادة عدد محافظ (${stage}) أولاً في قسم إحصاء المحافظ.`
+      );
+    } else {
+      notifyWarning(
+        'تجاوز عدد المحافظ المحدد',
+        `عدد محافظ طور (${stage}) المحددة في الاستمارة هو (${maxAllowed}) فقط، وقد تم حجزها بالكامل لأطفال متمدرسين آخرين.`
+      );
+    }
+    return;
+  }
+
+  child.education_level = level.year_name;
+};
+
+// Automatically match legacy text education_level to education_level_id
+watch(() => form.value?.children, (kids) => {
+  if (!kids || !Array.isArray(kids)) return;
+  for (const child of kids) {
+    if (child.education_level && !child.education_level_id && educationLevels.value.length > 0) {
+      const match = educationLevels.value.find(l => l.year_name === child.education_level || child.education_level.includes(l.year_name));
+      if (match) {
+        child.education_level_id = match.id;
+      }
+    }
+  }
+}, { deep: true, immediate: true });
+
+
 // Campaign Methods
 const openCampaignModal = () => campaignStore.openCampaignModal();
 const onCampaignChange = async () => {
@@ -2843,6 +3322,7 @@ const addChild = () => {
     birth_date: '',
     is_schooling: true,
     education_level: '',
+    education_level_id: null,
     school_name: ''
   });
 };
@@ -2868,6 +3348,10 @@ const save = async () => {
   }
   if (!form.value.id && matchResult.value.match_type === 'current_campaign') {
     notifyWarning('تنبيه: تكرار التسجيل', matchResult.value.message || 'هذا المستفيد مسجل بالفعل في هذا الموسم الحالي ولا يمكن تكرار إدخاله مرتين.');
+    return;
+  }
+  if (stageConsistencyError.value) {
+    notifyWarning('تنبيه عدم تناسق المحافظ', stageConsistencyError.value);
     return;
   }
   try {
@@ -3251,7 +3735,8 @@ onMounted(async () => {
   await Promise.all([
     statusStore.loadSocialStatuses(),
     orgStore.loadOrgSettings(),
-    campaignStore.loadCampaigns()
+    campaignStore.loadCampaigns(),
+    educationLevelStore.fetchAll()
   ]);
   if (selectedCampaignId.value) {
     await beneficiaryStore.fetchData(selectedCampaignId.value);

@@ -70,6 +70,8 @@ pub struct ChildRecord {
     pub birth_date: Option<String>,
     pub is_schooling: bool,
     pub education_level: Option<String>,
+    #[serde(default)]
+    pub education_level_id: Option<i64>,
     pub school_name: Option<String>,
 }
 
@@ -115,6 +117,34 @@ pub struct SocialStatusItem {
     pub name: String,
     pub count: i64,
     pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EducationLevel {
+    pub id: i64,
+    pub stage: String,
+    pub year_name: String,
+    pub year_order: i64,
+    pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EducationLevelWithCount {
+    pub id: i64,
+    pub stage: String,
+    pub year_name: String,
+    pub year_order: i64,
+    pub count: i64,
+    pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct EducationLevelStat {
+    pub id: i64,
+    pub stage: String,
+    pub year_name: String,
+    pub year_order: i64,
+    pub children_count: i64,
 }
 
 #[tauri::command]
@@ -433,10 +463,13 @@ fn get_beneficiaries(state: State<AppState>, campaign_id: i64, search: String, s
 fn get_guardian_children(state: State<AppState>, guardian_id: i64) -> Result<Vec<ChildRecord>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
-        "SELECT id, guardian_id, child_name, birth_date, is_schooling, education_level, school_name 
-         FROM guardian_children 
-         WHERE guardian_id = ?1 
-         ORDER BY id ASC"
+        "SELECT gc.id, gc.guardian_id, gc.child_name, gc.birth_date, gc.is_schooling, 
+                COALESCE(el.year_name, gc.education_level) as education_level, 
+                gc.school_name, gc.education_level_id
+         FROM guardian_children gc
+         LEFT JOIN education_levels el ON gc.education_level_id = el.id
+         WHERE gc.guardian_id = ?1 
+         ORDER BY gc.id ASC"
     ).map_err(|e| e.to_string())?;
     
     let rows = stmt.query_map(params![guardian_id], |row| {
@@ -447,6 +480,7 @@ fn get_guardian_children(state: State<AppState>, guardian_id: i64) -> Result<Vec
             birth_date: row.get(3)?,
             is_schooling: row.get::<_, i64>(4)? != 0,
             education_level: row.get(5)?,
+            education_level_id: row.get(7)?,
             school_name: row.get(6)?,
         })
     }).map_err(|e| e.to_string())?;
@@ -803,10 +837,20 @@ fn save_beneficiary(state: State<AppState>, campaign_id: i64, payload: Beneficia
     tx.execute("DELETE FROM guardian_children WHERE guardian_id = ?1", params![guardian_id]).map_err(|e| e.to_string())?;
     for child in &payload.children {
         if !child.child_name.trim().is_empty() {
+            // Resolve education_level text from education_level_id if available
+            let edu_level_text = if let Some(el_id) = child.education_level_id {
+                tx.query_row(
+                    "SELECT year_name FROM education_levels WHERE id = ?1",
+                    params![el_id],
+                    |r| r.get::<_, String>(0),
+                ).ok().or_else(|| child.education_level.as_ref().map(|s| s.trim().to_string()))
+            } else {
+                child.education_level.as_ref().map(|s| s.trim().to_string())
+            };
             tx.execute(
-                "INSERT INTO guardian_children (guardian_id, child_name, birth_date, is_schooling, education_level, school_name) 
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![guardian_id, child.child_name.trim(), child.birth_date.as_deref().map(|s| s.trim()), child.is_schooling, child.education_level.as_deref().map(|s| s.trim()), child.school_name.as_deref().map(|s| s.trim())],
+                "INSERT INTO guardian_children (guardian_id, child_name, birth_date, is_schooling, education_level, education_level_id, school_name) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![guardian_id, child.child_name.trim(), child.birth_date.as_deref().map(|s| s.trim()), child.is_schooling, edu_level_text, child.education_level_id, child.school_name.as_deref().map(|s| s.trim())],
             ).map_err(|e| e.to_string())?;
         }
     }
@@ -1369,6 +1413,173 @@ fn delete_social_status(state: State<AppState>, id: i64) -> Result<(), String> {
     Ok(())
 }
 
+// ==================== Education Levels CRUD ====================
+
+#[tauri::command]
+fn get_education_levels(state: State<AppState>) -> Result<Vec<EducationLevelWithCount>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT el.id, el.stage, el.year_name, el.year_order, 
+                COUNT(gc.id) as count, el.created_at
+         FROM education_levels el
+         LEFT JOIN guardian_children gc ON gc.education_level_id = el.id
+         GROUP BY el.id
+         ORDER BY 
+           CASE el.stage 
+             WHEN 'ابتدائي' THEN 1 
+             WHEN 'متوسط' THEN 2 
+             WHEN 'ثانوي' THEN 3 
+             ELSE 4 
+           END,
+           el.year_order ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(EducationLevelWithCount {
+            id: row.get(0)?,
+            stage: row.get(1)?,
+            year_name: row.get(2)?,
+            year_order: row.get(3)?,
+            count: row.get(4)?,
+            created_at: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for r in rows {
+        if let Ok(item) = r {
+            list.push(item);
+        }
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+fn create_education_level(state: State<AppState>, stage: String, year_name: String, year_order: i64) -> Result<EducationLevel, String> {
+    let stage = stage.trim();
+    let year_name = year_name.trim();
+    if stage.is_empty() || year_name.is_empty() {
+        return Err("اسم الطور والسنة الدراسية مطلوبان".into());
+    }
+    if year_order <= 0 {
+        return Err("ترتيب السنة يجب أن يكون رقماً أكبر من 0".into());
+    }
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO education_levels (stage, year_name, year_order) VALUES (?1, ?2, ?3)",
+        params![stage, year_name, year_order]
+    ).map_err(|e| format!("فشل إضافة السنة الدراسية (قد تكون موجودة مسبقاً): {}", e))?;
+
+    let id = conn.last_insert_rowid();
+    Ok(EducationLevel {
+        id,
+        stage: stage.to_string(),
+        year_name: year_name.to_string(),
+        year_order,
+        created_at: None,
+    })
+}
+
+#[tauri::command]
+fn update_education_level(state: State<AppState>, id: i64, year_name: String) -> Result<(), String> {
+    let year_name = year_name.trim();
+    if year_name.is_empty() {
+        return Err("اسم السنة الدراسية لا يمكن أن يكون فارغاً".into());
+    }
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let old_name: String = tx.query_row(
+        "SELECT year_name FROM education_levels WHERE id = ?1",
+        params![id],
+        |row| row.get(0)
+    ).map_err(|_| "السنة الدراسية غير موجودة".to_string())?;
+
+    tx.execute(
+        "UPDATE education_levels SET year_name = ?1 WHERE id = ?2",
+        params![year_name, id]
+    ).map_err(|e| format!("فشل تعديل السنة الدراسية: {}", e))?;
+
+    // Cascade rename to guardian_children so existing records stay consistent
+    tx.execute(
+        "UPDATE guardian_children SET education_level = ?1 WHERE education_level_id = ?2",
+        params![year_name, id]
+    ).map_err(|e| format!("فشل تحديث سجلات الأطفال: {}", e))?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_education_level(state: State<AppState>, id: i64) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let year_name: String = conn.query_row(
+        "SELECT year_name FROM education_levels WHERE id = ?1",
+        params![id],
+        |row| row.get(0)
+    ).map_err(|_| "السنة الدراسية غير موجودة".to_string())?;
+
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM guardian_children WHERE education_level_id = ?1",
+        params![id],
+        |row| row.get(0)
+    ).unwrap_or(0);
+
+    if count > 0 {
+        return Err(format!(
+            "لا يمكن حذف السنة الدراسية '{}' لأنها مرتبطة حالياً بـ {} من الأطفال المسجلين.",
+            year_name, count
+        ));
+    }
+
+    conn.execute("DELETE FROM education_levels WHERE id = ?1", params![id])
+        .map_err(|e| format!("فشل حذف السنة الدراسية: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn get_education_level_stats(state: State<AppState>, campaign_id: i64) -> Result<Vec<EducationLevelStat>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT el.id, el.stage, el.year_name, el.year_order, COUNT(gc.id) as children_count
+         FROM education_levels el
+         LEFT JOIN guardian_children gc ON gc.education_level_id = el.id 
+           AND gc.is_schooling = 1
+           AND gc.guardian_id IN (
+             SELECT cr.guardian_id FROM campaign_records cr WHERE cr.campaign_id = ?1
+           )
+         GROUP BY el.id
+         ORDER BY 
+           CASE el.stage 
+             WHEN 'ابتدائي' THEN 1 
+             WHEN 'متوسط' THEN 2 
+             WHEN 'ثانوي' THEN 3 
+             ELSE 4 
+           END,
+           el.year_order ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(params![campaign_id], |row| {
+        Ok(EducationLevelStat {
+            id: row.get(0)?,
+            stage: row.get(1)?,
+            year_name: row.get(2)?,
+            year_order: row.get(3)?,
+            children_count: row.get(4)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut stats = Vec::new();
+    for item in rows {
+        stats.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(stats)
+}
+
 fn get_db_path() -> std::path::PathBuf {
     // 1. If running in development (inside the project repo)
     if let Ok(cur) = std::env::current_dir() {
@@ -1504,6 +1715,29 @@ fn main() {
 
         INSERT OR IGNORE INTO organization_settings (id, org_name, branch_name, wilaya, phone) 
         VALUES (1, 'الجمعية الخيرية لرعاية الأيتام والمحتاجين', 'المكتب الولائي', 'قسنطينة', '');
+
+        CREATE TABLE IF NOT EXISTS education_levels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stage TEXT NOT NULL,
+            year_name TEXT NOT NULL,
+            year_order INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(stage, year_order)
+        );
+
+        INSERT OR IGNORE INTO education_levels (stage, year_name, year_order) VALUES
+        ('ابتدائي', 'السنة 1 ابتدائي', 1),
+        ('ابتدائي', 'السنة 2 ابتدائي', 2),
+        ('ابتدائي', 'السنة 3 ابتدائي', 3),
+        ('ابتدائي', 'السنة 4 ابتدائي', 4),
+        ('ابتدائي', 'السنة 5 ابتدائي', 5),
+        ('متوسط', 'السنة 1 متوسط', 1),
+        ('متوسط', 'السنة 2 متوسط', 2),
+        ('متوسط', 'السنة 3 متوسط', 3),
+        ('متوسط', 'السنة 4 متوسط', 4),
+        ('ثانوي', 'السنة 1 ثانوي', 1),
+        ('ثانوي', 'السنة 2 ثانوي', 2),
+        ('ثانوي', 'السنة 3 ثانوي', 3);
     ").unwrap();
 
     let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN record_no INTEGER", []);
@@ -1521,6 +1755,7 @@ fn main() {
 
     // Performance indexes for fast relational lookups, child records, stats, and search
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_children_guardian_id ON guardian_children(guardian_id)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_children_education_level_id ON guardian_children(education_level_id)", []);
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_records_guardian_id ON campaign_records(guardian_id)", []);
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_records_campaign_delivered ON campaign_records(campaign_id, is_delivered)", []);
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_guardians_name ON guardians(guardian_name)", []);
@@ -1568,6 +1803,9 @@ fn main() {
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN spouse_name TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN monthly_income TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN children_count INTEGER", []);
+
+    // Migration: add education_level_id to guardian_children
+    let _ = conn.execute("ALTER TABLE guardian_children ADD COLUMN education_level_id INTEGER REFERENCES education_levels(id)", []);
 
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM campaigns", [], |r| r.get(0)).unwrap_or(0);
     if count == 0 {
@@ -1639,7 +1877,12 @@ fn main() {
             get_social_status_stats,
             update_campaign_label,
             delete_campaign,
-            set_active_campaign
+            set_active_campaign,
+            get_education_levels,
+            create_education_level,
+            update_education_level,
+            delete_education_level,
+            get_education_level_stats
         ])
         .run(tauri::generate_context!())
         .expect("خطأ أثناء تشغيل Tauri");
