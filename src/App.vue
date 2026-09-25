@@ -585,7 +585,7 @@
                   </span>
                 </div>
               </th>
-              <th class="py-2.5 px-3 text-center hidden print:table-cell">الرقم</th>
+              <th class="py-2.5 px-3 text-center hidden print:table-cell">{{ (printScope === 'priority_ranked' && isPrinting) ? 'الرتبة' : 'الرقم' }}</th>
 
               <!-- Sortable Column: Guardian Name -->
               <th @click="toggleSort('guardian_name')"
@@ -639,8 +639,17 @@
                   class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer accent-indigo-600" 
                 />
               </td>
-              <td class="py-2 px-3 text-center font-mono font-bold text-indigo-700 text-xs">{{ item.record_no || (index +
-                1) }}</td>
+              <td class="py-2 px-3 text-center font-mono font-bold text-indigo-700 text-xs">
+                <template v-if="printScope === 'priority_ranked' && isPrinting">
+                  <div class="flex flex-col items-center leading-tight">
+                    <span class="font-black text-slate-900 text-xs">#{{ (Number(printRankFrom) || 1) + index }}</span>
+                    <span v-if="item.record_no" class="text-[9px] text-slate-500 font-normal">سجل: {{ item.record_no }}</span>
+                  </div>
+                </template>
+                <template v-else>
+                  {{ item.record_no || (index + 1) }}
+                </template>
+              </td>
               <td class="py-2 px-4 font-bold text-slate-800">
                 <div class="flex items-center gap-2.5">
                   <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-xs text-slate-400 font-bold shadow-2xs">
@@ -668,8 +677,11 @@
                   <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'high'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضرورية</span>
                   <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'medium'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 cursor-help" :title="getPriorityScoreTooltip(item)">متوسطة</span>
                   <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضعيفة</span>
-                  <span v-if="Number(item.extra_priority_points) > 0" class="text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold font-mono" :title="`نقاط استثنائية إضافية: +${item.extra_priority_points}`">
+                  <span v-if="Number(item.extra_priority_points) > 0" class="text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold font-mono no-print" :title="`نقاط استثنائية إضافية: +${item.extra_priority_points}`">
                     +{{ item.extra_priority_points }}⭐
+                  </span>
+                  <span class="inline-block text-[10px] font-mono font-bold text-slate-700 bg-slate-100 print:bg-slate-100/80 px-1.5 py-0.5 rounded border border-slate-200 print:border-slate-300" title="مجموع نقاط الأولوية">
+                    {{ getPriorityScore(item) }}ن
                   </span>
                 </div>
               </td>
@@ -2401,6 +2413,98 @@
                     </div>
                   </label>
 
+                  <!-- NEW: Priority Ranked Scope (ترتيب تنازلي حسب النقاط مع حصر العدد من إلى) -->
+                  <label 
+                    @click="printScope = 'priority_ranked'"
+                    :class="printScope === 'priority_ranked' ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900 ring-1 ring-amber-400' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
+                    class="flex flex-col p-2.5 rounded-xl border cursor-pointer transition text-xs gap-1.5"
+                  >
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <input type="radio" value="priority_ranked" v-model="printScope" class="text-amber-600 focus:ring-amber-500" />
+                        <span class="flex items-center gap-1.5 font-bold text-slate-900">
+                          <span>🎯</span>
+                          <span>ترتيب تنازلي حسب نقاط الأولوية (الأعلى فالأقل)</span>
+                        </span>
+                      </div>
+                      <span class="bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px] px-2 py-0.5 rounded-md font-bold">
+                        كوتا / حصة توزيع
+                      </span>
+                    </div>
+
+                    <!-- Ranked Controls (Visible when active) -->
+                    <div v-if="printScope === 'priority_ranked'" class="flex flex-col gap-2 pt-1 px-2 border-t border-amber-200/60 mt-1" @click.stop>
+                      <!-- Rank Inputs & Quick Presets -->
+                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-1">
+                          <div class="flex items-center gap-1.5 flex-1">
+                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">من الرتبة:</span>
+                            <input 
+                              type="number" 
+                              v-model.number="printRankFrom" 
+                              min="1" 
+                              :max="printRankedEligibleTotal || 1"
+                              class="w-full text-center font-mono font-bold bg-white border border-amber-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
+                            />
+                          </div>
+                          <div class="flex items-center gap-1.5 flex-1">
+                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">إلى الرتبة:</span>
+                            <input 
+                              type="number" 
+                              v-model.number="printRankTo" 
+                              min="1" 
+                              :max="printRankedEligibleTotal || 1"
+                              class="w-full text-center font-mono font-bold bg-white border border-amber-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- Quick Presets -->
+                        <div class="flex items-center gap-1 justify-end shrink-0">
+                          <span class="text-[10px] text-slate-500">حصة سريعة:</span>
+                          <button type="button" @click="setRankPreset(1, 20)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">20</button>
+                          <button type="button" @click="setRankPreset(1, 50)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">50</button>
+                          <button type="button" @click="setRankPreset(1, 100)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">100</button>
+                          <button type="button" @click="setRankPreset(1, printRankedEligibleTotal)" class="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold cursor-pointer transition">الكل ({{ printRankedEligibleTotal }})</button>
+                        </div>
+                      </div>
+
+                      <!-- Priority Categories Filter -->
+                      <div class="flex items-center justify-between gap-1 flex-wrap pt-1 border-t border-amber-100 text-[11px]">
+                        <span class="text-slate-600 font-bold text-[10px]">حصر الفئات:</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" value="critical" v-model="printRankedCategories" class="text-rose-600 focus:ring-rose-500 rounded" />
+                            <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية جداً</span>
+                          </label>
+                          <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" value="high" v-model="printRankedCategories" class="text-orange-600 focus:ring-orange-500 rounded" />
+                            <span class="text-orange-800 font-bold bg-orange-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية</span>
+                          </label>
+                          <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" value="medium" v-model="printRankedCategories" class="text-amber-600 focus:ring-amber-500 rounded" />
+                            <span class="text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">متوسطة</span>
+                          </label>
+                          <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" value="low" v-model="printRankedCategories" class="text-emerald-600 focus:ring-emerald-500 rounded" />
+                            <span class="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">ضعيفة</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <!-- Live Smart Preview Card -->
+                      <div v-if="printTargetBeneficiaries.length > 0" class="bg-amber-100/80 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-2 mt-0.5">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span>📊 <strong>النطاق المشمول:</strong></span>
+                          <span>الرتبة #{{ printRankFrom }} ({{ printRankedPreviewStats.topScore }}ن) ⬅️ الرتبة #{{ Math.min(printRankTo, printRankFrom + printTargetBeneficiaries.length - 1) }} ({{ printRankedPreviewStats.lowScore }}ن)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span>🎒 <strong>المحافظ المطلوبة:</strong> <span class="font-black text-xs text-amber-900 font-mono">{{ printRankedPreviewStats.totalBags }}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+
                   <!-- Priority Range -->
                   <label 
                     @click="printScope = 'priority'"
@@ -2566,6 +2670,19 @@
                     <span class="text-slate-500">نوع المطبوع:</span>
                     <strong class="text-slate-900 truncate max-w-[130px] text-left">
                       {{ printDocType === 'list' ? 'محضر التوزيع' : (printScope === 'blank' ? 'استمارة فارغة' : 'استمارة الدخول') }}
+                    </strong>
+                  </div>
+                  <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-slate-500">النطاق:</span>
+                    <strong class="text-indigo-900 truncate max-w-[140px] text-left text-[11px]">
+                      {{ 
+                        printScope === 'all' ? 'جميع المسجلين' :
+                        printScope === 'selected' ? `محدد (${selectedBeneficiaryIds.length})` :
+                        printScope === 'range' ? `أرقام (${printRangeFrom}-${printRangeTo})` :
+                        printScope === 'priority' ? 'فئات الأولوية' :
+                        printScope === 'priority_ranked' ? `أولوية تنازلية (#${printRankFrom}-#${printRankTo})` :
+                        'استمارة فارغة'
+                      }}
                     </strong>
                   </div>
                   <div class="flex items-center justify-between text-[11px]">
@@ -3097,6 +3214,9 @@ const printTotalBags = computed(() => {
 });
 
 const printReportTitle = computed(() => {
+  if (printScope.value === 'priority_ranked') {
+    return `محضر توزيع الحقائب (حسب نقاط الأولوية: الرتبة ${printRankFrom.value} إلى ${printRankTo.value})`;
+  }
   if (deliveryFilter.value === 'delivered') {
     return 'محضر تسليم الحقائب المدرسية (المستلمين)';
   } else if (deliveryFilter.value === 'pending') {
@@ -3279,9 +3399,16 @@ const selectedBeneficiaryIds = ref([]);
 // ==========================================
 const showPrintCustomModal = ref(false);
 const printDocType = ref('list'); // 'list' | 'forms'
-const printScope = ref('all'); // 'all' | 'selected' | 'range' | 'single' | 'blank' | 'priority'
+const printScope = ref('all'); // 'all' | 'selected' | 'range' | 'single' | 'blank' | 'priority' | 'priority_ranked'
 const printRangeFrom = ref(1);
 const printRangeTo = ref(100);
+const printRankFrom = ref(1);
+const printRankTo = ref(50);
+const printRankedCategories = ref(['critical', 'high', 'medium', 'low']);
+const setRankPreset = (from, to) => {
+  printRankFrom.value = Math.max(1, Number(from) || 1);
+  printRankTo.value = Math.max(printRankFrom.value, Number(to) || 1);
+};
 const printSelectedPriorities = ref(['critical', 'high']); // default selection
 const printBlankCopiesCount = ref(1);
 const singlePrintBeneficiary = ref(null);
@@ -3379,6 +3506,47 @@ const _old_getPriorityCategory = (score) => {
   return 'low';
 };
 
+// Full list sorted strictly by priority score descending
+const rankedEligibleBeneficiaries = computed(() => {
+  let list = fullBeneficiariesForPrint.value.length > 0 
+    ? fullBeneficiariesForPrint.value 
+    : sortedBeneficiaries.value;
+
+  if (printRankedCategories.value.length < 4) {
+    list = list.filter(b => {
+      const score = getPriorityScore(b);
+      const cat = getPriorityCategory(score);
+      return printRankedCategories.value.includes(cat);
+    });
+  }
+
+  return [...list].sort((a, b) => {
+    const scoreA = getPriorityScore(a);
+    const scoreB = getPriorityScore(b);
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    const numA = a.record_no !== null && a.record_no !== undefined ? Number(a.record_no) : (a.id || 0);
+    const numB = b.record_no !== null && b.record_no !== undefined ? Number(b.record_no) : (b.id || 0);
+    return numA - numB;
+  });
+});
+
+const printRankedEligibleTotal = computed(() => rankedEligibleBeneficiaries.value.length);
+
+const printRankedPreviewStats = computed(() => {
+  const list = printTargetBeneficiaries.value;
+  if (!list || list.length === 0) {
+    return { topScore: 0, lowScore: 0, totalBags: 0 };
+  }
+  const topScore = getPriorityScore(list[0]);
+  const lowScore = getPriorityScore(list[list.length - 1]);
+  const totalBags = list.reduce((acc, b) => {
+    return acc + (Number(b.primary_count) || 0) + (Number(b.middle_count) || 0) + (Number(b.secondary_count) || 0);
+  }, 0);
+  return { topScore, lowScore, totalBags };
+});
+
 const printTargetBeneficiaries = computed(() => {
   if (printDocType.value === 'forms' && printScope.value === 'blank') {
     const count = Math.max(Number(printBlankCopiesCount.value) || 1, 1);
@@ -3390,6 +3558,11 @@ const printTargetBeneficiaries = computed(() => {
   if (printScope.value === 'selected') {
     const set = new Set(selectedBeneficiaryIds.value);
     return sortedBeneficiaries.value.filter(b => set.has(b.id));
+  }
+  if (printScope.value === 'priority_ranked') {
+    const from = Math.max(1, Number(printRankFrom.value) || 1);
+    const to = Math.max(from, Number(printRankTo.value) || from);
+    return rankedEligibleBeneficiaries.value.slice(from - 1, to);
   }
   
   // Use full, unfiltered beneficiaries for 'range', 'priority' and 'all'
@@ -4262,6 +4435,9 @@ const openCustomPrintModal = async (type = 'list') => {
       ? Math.max(...fullBeneficiariesForPrint.value.map((b, idx) => Number(b.record_no) || (idx + 1)))
       : 100;
     printRangeTo.value = Math.max(maxNo, 1);
+
+    printRankFrom.value = 1;
+    printRankTo.value = Math.min(50, Math.max(fullBeneficiariesForPrint.value.length, 1));
   }
   showPrintCustomModal.value = true;
 };
@@ -4325,7 +4501,7 @@ const executeCustomPrint = async () => {
 
   const prevSortKey = sortKey.value;
   const prevSortOrder = sortOrder.value;
-  if (printScope.value !== 'blank') {
+  if (printScope.value !== 'blank' && printScope.value !== 'priority_ranked') {
     sortKey.value = 'record_no';
     sortOrder.value = 'asc';
   }
@@ -4351,7 +4527,7 @@ const executeCustomPrint = async () => {
     window.print();
     setTimeout(() => {
       isPrinting.value = false;
-      if (printScope.value !== 'blank') {
+      if (printScope.value !== 'blank' && printScope.value !== 'priority_ranked') {
         sortKey.value = prevSortKey;
         sortOrder.value = prevSortOrder;
       }
