@@ -14,7 +14,8 @@
       "all": false,
       "dialog": {
         "all": false,
-        "save": true
+        "save": true,
+        "open": true
       }
     },
     "bundle": {

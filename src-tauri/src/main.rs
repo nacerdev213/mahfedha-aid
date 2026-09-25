@@ -1,9 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod crypto;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
+use std::io::{Cursor, Read, Write};
 use std::sync::Mutex;
 use tauri::State;
+use zip::write::FileOptions;
+use zip::CompressionMethod;
 
 struct AppState {
     db: Mutex<Connection>,
@@ -1912,6 +1917,562 @@ async fn open_scanner_app() -> Result<String, String> {
     Ok("تم إرسال أمر تشغيل الماسح الضوئي".into())
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BackupManifest {
+    pub version: String,
+    pub app_version: String,
+    pub created_at: String,
+    pub total_guardians: i64,
+    pub total_campaign_records: i64,
+    pub total_avatars: usize,
+    pub database_sha256: String,
+}
+
+fn dump_table_to_json(conn: &Connection, table_name: &str) -> Result<Vec<serde_json::Value>, String> {
+    let exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1",
+            params![table_name],
+            |_| Ok(true),
+        )
+        .unwrap_or(false);
+
+    if !exists {
+        return Ok(Vec::new());
+    }
+
+    let mut stmt = conn
+        .prepare(&format!("SELECT * FROM {}", table_name))
+        .map_err(|e| format!("خطأ استعلام جدول {}: {}", table_name, e))?;
+
+    let col_names: Vec<String> = stmt
+        .column_names()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    let mut rows_vec = Vec::new();
+    let mut rows = stmt
+        .query([])
+        .map_err(|e| format!("خطأ قراءة بيانات {}: {}", table_name, e))?;
+
+    while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+        let mut row_map = serde_json::Map::new();
+        for (i, col_name) in col_names.iter().enumerate() {
+            let val_ref = row.get_ref(i).map_err(|e| e.to_string())?;
+            let json_val = match val_ref {
+                rusqlite::types::ValueRef::Null => serde_json::Value::Null,
+                rusqlite::types::ValueRef::Integer(n) => serde_json::Value::Number(n.into()),
+                rusqlite::types::ValueRef::Real(f) => serde_json::Number::from_f64(f)
+                    .map(serde_json::Value::Number)
+                    .unwrap_or(serde_json::Value::Null),
+                rusqlite::types::ValueRef::Text(t) => {
+                    serde_json::Value::String(String::from_utf8_lossy(t).into_owned())
+                }
+                rusqlite::types::ValueRef::Blob(b) => {
+                    serde_json::Value::String(encode_base64(b))
+                }
+            };
+            row_map.insert(col_name.clone(), json_val);
+        }
+        rows_vec.push(serde_json::Value::Object(row_map));
+    }
+
+    Ok(rows_vec)
+}
+
+pub fn create_backup_internal(
+    app_handle: &tauri::AppHandle,
+    conn: &Connection,
+    target_path: &str,
+) -> Result<String, String> {
+    let tables = [
+        "organization_settings",
+        "social_statuses",
+        "guardians",
+        "campaigns",
+        "campaign_records",
+        "guardian_children",
+        "education_levels",
+    ];
+
+    let mut db_dump = serde_json::Map::new();
+    for t in &tables {
+        let rows = dump_table_to_json(conn, t)?;
+        db_dump.insert(t.to_string(), serde_json::Value::Array(rows));
+    }
+
+    let db_json_str = serde_json::to_string_pretty(&serde_json::Value::Object(db_dump))
+        .map_err(|e| format!("فشل ترميز بيانات القاعدة: {}", e))?;
+    let db_json_bytes = db_json_str.as_bytes();
+    let db_sha256 = crypto::calculate_sha256(db_json_bytes);
+
+    // Collect avatars (.webp files)
+    let avatars_dir = get_avatars_dir(app_handle);
+    let mut avatar_files: Vec<(String, Vec<u8>)> = Vec::new();
+    if avatars_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&avatars_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(ext) = path.extension() {
+                        if ext.to_string_lossy().to_lowercase() == "webp" {
+                            if let Some(name) = path.file_name() {
+                                if let Ok(bytes) = std::fs::read(&path) {
+                                    avatar_files.push((name.to_string_lossy().into_owned(), bytes));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(db_parent) = get_db_path().parent() {
+        let db_avatars = db_parent.join("avatars");
+        if db_avatars.exists() && db_avatars != avatars_dir {
+            if let Ok(entries) = std::fs::read_dir(&db_avatars) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        if let Some(ext) = path.extension() {
+                            if ext.to_string_lossy().to_lowercase() == "webp" {
+                                if let Some(name) = path.file_name() {
+                                    let name_str = name.to_string_lossy().into_owned();
+                                    if !avatar_files.iter().any(|(n, _)| n == &name_str) {
+                                        if let Ok(bytes) = std::fs::read(&path) {
+                                            avatar_files.push((name_str, bytes));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let total_guardians: i64 = conn.query_row("SELECT COUNT(*) FROM guardians", [], |r| r.get(0)).unwrap_or(0);
+    let total_campaign_records: i64 = conn.query_row("SELECT COUNT(*) FROM campaign_records", [], |r| r.get(0)).unwrap_or(0);
+    let now_str = chrono::Local::now().to_rfc3339();
+
+    let manifest = BackupManifest {
+        version: "1.0.0".to_string(),
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
+        created_at: now_str,
+        total_guardians,
+        total_campaign_records,
+        total_avatars: avatar_files.len(),
+        database_sha256: db_sha256,
+    };
+
+    let manifest_json = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| format!("فشل ترميز بيانات البيان: {}", e))?;
+
+    let mut zip_buf = Cursor::new(Vec::new());
+    {
+        let mut zip = zip::ZipWriter::new(&mut zip_buf);
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o755);
+
+        zip.start_file("manifest.json", options)
+            .map_err(|e| format!("فشل إنشاء manifest.json في الأرشيف: {}", e))?;
+        zip.write_all(manifest_json.as_bytes())
+            .map_err(|e| format!("فشل كتابة manifest.json: {}", e))?;
+
+        zip.start_file("database.json", options)
+            .map_err(|e| format!("فشل إنشاء database.json في الأرشيف: {}", e))?;
+        zip.write_all(db_json_bytes)
+            .map_err(|e| format!("فشل كتابة database.json: {}", e))?;
+
+        for (fname, bytes) in &avatar_files {
+            zip.start_file(format!("avatars/{}", fname), options)
+                .map_err(|e| format!("فشل إنشاء ملف الصورة {} في الأرشيف: {}", fname, e))?;
+            zip.write_all(bytes)
+                .map_err(|e| format!("فشل كتابة الصورة {}: {}", fname, e))?;
+        }
+
+        zip.finish()
+            .map_err(|e| format!("فشل إغلاق أرشيف ZIP: {}", e))?;
+    }
+    let raw_zip = zip_buf.into_inner();
+
+    let encrypted_data = crypto::encrypt_buffer(&raw_zip)?;
+
+    let mut final_path = std::path::PathBuf::from(target_path);
+    if final_path.extension().and_then(|s| s.to_str()) != Some("scaid") {
+        final_path.set_extension("scaid");
+    }
+
+    if let Some(parent) = final_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    std::fs::write(&final_path, &encrypted_data)
+        .map_err(|e| format!("فشل حفظ ملف النسخة الاحتياطية على القرص: {}", e))?;
+
+    Ok(final_path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+async fn create_backup(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    target_path: String,
+) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    create_backup_internal(&app_handle, &conn, &target_path)
+}
+
+fn insert_table_rows(
+    tx: &rusqlite::Transaction,
+    table_name: &str,
+    rows_val: Option<&serde_json::Value>,
+) -> Result<usize, String> {
+    let rows_array = match rows_val.and_then(|v| v.as_array()) {
+        Some(arr) => arr,
+        None => return Ok(0),
+    };
+
+    let mut count = 0;
+    for row_val in rows_array {
+        if let Some(obj) = row_val.as_object() {
+            let cols: Vec<&String> = obj.keys().collect();
+            if cols.is_empty() {
+                continue;
+            }
+            let placeholders = cols.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let col_names = cols
+                .iter()
+                .map(|c| format!("\"{}\"", c))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!(
+                "INSERT OR REPLACE INTO {} ({}) VALUES ({})",
+                table_name, col_names, placeholders
+            );
+
+            let params_vec: Vec<rusqlite::types::Value> = cols
+                .iter()
+                .map(|col| {
+                    let v = &obj[*col];
+                    match v {
+                        serde_json::Value::Null => rusqlite::types::Value::Null,
+                        serde_json::Value::Bool(b) => {
+                            rusqlite::types::Value::Integer(if *b { 1 } else { 0 })
+                        }
+                        serde_json::Value::Number(n) => {
+                            if let Some(i) = n.as_i64() {
+                                rusqlite::types::Value::Integer(i)
+                            } else if let Some(f) = n.as_f64() {
+                                rusqlite::types::Value::Real(f)
+                            } else {
+                                rusqlite::types::Value::Null
+                            }
+                        }
+                        serde_json::Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+                        _ => rusqlite::types::Value::Text(v.to_string()),
+                    }
+                })
+                .collect();
+
+            let params_refs: Vec<&dyn rusqlite::ToSql> =
+                params_vec.iter().map(|v| v as &dyn rusqlite::ToSql).collect();
+            tx.execute(&sql, params_refs.as_slice())
+                .map_err(|e| format!("فشل إدراج سطر في جدول {}: {}", table_name, e))?;
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+#[tauri::command]
+async fn restore_backup(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    backup_file_path: String,
+) -> Result<String, String> {
+    // 1. Mandatory Auto-Safety Snapshot before touching anything
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let base_dir = get_db_path()
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let backups_dir = base_dir.join("backups");
+    let _ = std::fs::create_dir_all(&backups_dir);
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let safety_path = backups_dir.join(format!("safety_before_restore_{}.scaid", timestamp));
+    let safety_path_str = safety_path.to_string_lossy().into_owned();
+
+    create_backup_internal(&app_handle, &conn, &safety_path_str)
+        .map_err(|e| format!("فشل إنشاء النسخة الاحتياطية الوقائية قبل الاسترجاع: {}", e))?;
+
+    // 2. Decrypt & Validate chosen backup file
+    let file_path = std::path::Path::new(&backup_file_path);
+    if !file_path.exists() {
+        return Err("ملف النسخة الاحتياطية المحدد غير موجود".to_string());
+    }
+    let encrypted_bytes = std::fs::read(file_path)
+        .map_err(|e| format!("فشل قراءة ملف النسخة الاحتياطية: {}", e))?;
+
+    let raw_zip = crypto::decrypt_buffer(&encrypted_bytes)?;
+
+    let cursor = Cursor::new(raw_zip);
+    let mut zip = zip::ZipArchive::new(cursor)
+        .map_err(|e| format!("فشل فتح أرشيف النسخة الاحتياطية بعد فك التشفير: {}", e))?;
+
+    // Read manifest.json
+    let manifest_str = {
+        let mut manifest_file = zip
+            .by_name("manifest.json")
+            .map_err(|_| "ملف النسخة غير صالح: ملف manifest.json مفقود داخل الأرشيف".to_string())?;
+        let mut s = String::new();
+        manifest_file
+            .read_to_string(&mut s)
+            .map_err(|e| format!("فشل قراءة ملف manifest.json: {}", e))?;
+        s
+    };
+    let manifest: BackupManifest = serde_json::from_str(&manifest_str)
+        .map_err(|e| format!("بيانات بيان النسخة غير صالحة: {}", e))?;
+
+    // Read database.json
+    let db_json_bytes = {
+        let mut db_file = zip
+            .by_name("database.json")
+            .map_err(|_| "ملف النسخة غير صالح: ملف database.json مفقود داخل الأرشيف".to_string())?;
+        let mut b = Vec::new();
+        db_file
+            .read_to_end(&mut b)
+            .map_err(|e| format!("فشل قراءة بيانات database.json: {}", e))?;
+        b
+    };
+
+    // Checksum verification
+    let computed_sha256 = crypto::calculate_sha256(&db_json_bytes);
+    if computed_sha256 != manifest.database_sha256 {
+        return Err("فشل التحقق من سلامة الأرشيف: تجزئة SHA256 غير متطابقة، الملف تالف!".to_string());
+    }
+
+    let db_dump: serde_json::Map<String, serde_json::Value> = serde_json::from_slice(&db_json_bytes)
+        .map_err(|e| format!("فشل تفكيك محتوى database.json: {}", e))?;
+
+    // 3. Clear existing avatars and extract restored ones
+    let avatars_dir = get_avatars_dir(&app_handle);
+    if avatars_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&avatars_dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_file() {
+                    let _ = std::fs::remove_file(p);
+                }
+            }
+        }
+    }
+    let _ = std::fs::create_dir_all(&avatars_dir);
+
+    if let Some(db_parent) = get_db_path().parent() {
+        let db_avatars = db_parent.join("avatars");
+        if db_avatars.exists() && db_avatars != avatars_dir {
+            if let Ok(entries) = std::fs::read_dir(&db_avatars) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_file() {
+                        let _ = std::fs::remove_file(p);
+                    }
+                }
+            }
+        }
+    }
+
+    let total_zip_files = zip.len();
+    let mut restored_avatars = 0;
+    for i in 0..total_zip_files {
+        let (file_only, content) = {
+            let mut file = zip.by_index(i).map_err(|e| e.to_string())?;
+            let name = file.name().to_string();
+            if name.starts_with("avatars/") && !name.ends_with('/') {
+                let simple_name = name.trim_start_matches("avatars/").replace('\\', "/");
+                let f_only = simple_name.split('/').last().unwrap_or(&simple_name).to_string();
+                if !f_only.is_empty() {
+                    let mut content = Vec::new();
+                    file.read_to_end(&mut content).map_err(|e| e.to_string())?;
+                    (Some(f_only), content)
+                } else {
+                    (None, Vec::new())
+                }
+            } else {
+                (None, Vec::new())
+            }
+        };
+
+        if let Some(file_only) = file_only {
+            let _ = std::fs::write(avatars_dir.join(&file_only), &content);
+            if let Some(db_parent) = get_db_path().parent() {
+                let db_avatars = db_parent.join("avatars");
+                if db_avatars != avatars_dir {
+                    let _ = std::fs::create_dir_all(&db_avatars);
+                    let _ = std::fs::write(db_avatars.join(&file_only), &content);
+                }
+            }
+            restored_avatars += 1;
+        }
+    }
+
+    // 4. Atomic Transactional Restore
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("فشل بدء المعاملة المصرفية للاسترجاع: {}", e))?;
+
+    // Clear existing records in proper child-to-parent order
+    tx.execute("DELETE FROM campaign_records", [])
+        .map_err(|e| format!("فشل تفريغ campaign_records: {}", e))?;
+    let _ = tx.execute("DELETE FROM guardian_children", []);
+    tx.execute("DELETE FROM guardians", [])
+        .map_err(|e| format!("فشل تفريغ guardians: {}", e))?;
+    tx.execute("DELETE FROM campaigns", [])
+        .map_err(|e| format!("فشل تفريغ campaigns: {}", e))?;
+    tx.execute("DELETE FROM social_statuses", [])
+        .map_err(|e| format!("فشل تفريغ social_statuses: {}", e))?;
+    tx.execute("DELETE FROM organization_settings", [])
+        .map_err(|e| format!("فشل تفريغ organization_settings: {}", e))?;
+    let _ = tx.execute("DELETE FROM education_levels", []);
+
+    // Insert restored data in proper parent-to-child order
+    insert_table_rows(&tx, "organization_settings", db_dump.get("organization_settings"))?;
+    insert_table_rows(&tx, "education_levels", db_dump.get("education_levels"))?;
+    insert_table_rows(&tx, "social_statuses", db_dump.get("social_statuses"))?;
+    insert_table_rows(&tx, "campaigns", db_dump.get("campaigns"))?;
+    insert_table_rows(&tx, "guardians", db_dump.get("guardians"))?;
+    insert_table_rows(&tx, "guardian_children", db_dump.get("guardian_children"))?;
+    insert_table_rows(&tx, "campaign_records", db_dump.get("campaign_records"))?;
+
+    tx.commit()
+        .map_err(|e| format!("فشل تثبيت استرجاع قاعدة البيانات: {}", e))?;
+
+    Ok(format!(
+        "تم استرجاع البيانات بنجاح: {} مستفيد، {} سجل حملة، {} صورة شخصية مسترجعة. تم حفظ نسخة وقائية في: {}",
+        manifest.total_guardians,
+        manifest.total_campaign_records,
+        restored_avatars,
+        safety_path_str
+    ))
+}
+
+#[tauri::command]
+async fn factory_reset(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    // 1. Take an automatic safety backup before resetting
+    let base_dir = get_db_path()
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let backups_dir = base_dir.join("backups");
+    let _ = std::fs::create_dir_all(&backups_dir);
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let safety_path = backups_dir.join(format!("pre_factory_reset_{}.scaid", timestamp));
+    let safety_path_str = safety_path.to_string_lossy().into_owned();
+
+    create_backup_internal(&app_handle, &conn, &safety_path_str)
+        .map_err(|e| format!("فشل أخذ نسخة احتياطية وقائية قبل إعادة ضبط المصنع: {}", e))?;
+
+    // 2. Delete all files in the local avatars/ directory
+    let avatars_dir = get_avatars_dir(&app_handle);
+    if avatars_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&avatars_dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_file() {
+                    let _ = std::fs::remove_file(p);
+                }
+            }
+        }
+    }
+
+    if let Some(db_parent) = get_db_path().parent() {
+        let db_avatars = db_parent.join("avatars");
+        if db_avatars.exists() && db_avatars != avatars_dir {
+            if let Ok(entries) = std::fs::read_dir(&db_avatars) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_file() {
+                        let _ = std::fs::remove_file(p);
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Delete all rows from campaign_records, guardians, campaigns (and guardian_children)
+    // 4. Reset social_statuses to the 5 default entries
+    // 5. Reset organization_settings to default clean values
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("فشل بدء معاملة إعادة الضبط: {}", e))?;
+
+    tx.execute("DELETE FROM campaign_records", [])
+        .map_err(|e| format!("فشل تفريغ campaign_records: {}", e))?;
+    let _ = tx.execute("DELETE FROM guardian_children", []);
+    tx.execute("DELETE FROM guardians", [])
+        .map_err(|e| format!("فشل تفريغ guardians: {}", e))?;
+    tx.execute("DELETE FROM campaigns", [])
+        .map_err(|e| format!("فشل تفريغ campaigns: {}", e))?;
+
+    // Create fresh initial campaign
+    tx.execute(
+        "INSERT INTO campaigns (year_label, is_active) VALUES ('2025/2026', 1)",
+        [],
+    )
+    .map_err(|e| format!("فشل إنشاء الموسم الافتراضي: {}", e))?;
+
+    // Reset social statuses to 5 default entries with standard priority points
+    tx.execute("DELETE FROM social_statuses", [])
+        .map_err(|e| format!("فشل تفريغ social_statuses: {}", e))?;
+    tx.execute(
+        "INSERT INTO social_statuses (name, base_points) VALUES 
+         ('بدون دخل', 40), 
+         ('إعاقة', 35), 
+         ('مرض مزمن', 30), 
+         ('ضعيف الدخل', 20), 
+         ('متقاعد', 10)",
+        [],
+    )
+    .map_err(|e| format!("فشل استرجاع الحالات الاجتماعية الافتراضية: {}", e))?;
+
+    // Reset organization settings to default clean values
+    tx.execute("DELETE FROM organization_settings", [])
+        .map_err(|e| format!("فشل تفريغ organization_settings: {}", e))?;
+    tx.execute(
+        "INSERT INTO organization_settings (
+            id, org_name, branch_name, wilaya, commune, phone, footer_text,
+            student_priority_points, marital_points_widow, marital_points_divorced,
+            marital_points_deserted, marital_points_married, marital_points_single,
+            marital_points_other, priority_threshold_critical, priority_threshold_high,
+            priority_threshold_medium
+         ) VALUES (
+            1, 'الجمعية الخيرية لرعاية الأيتام والمحتاجين', 'المكتب الولائي', 'قسنطينة', '', '',
+            'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.',
+            5, 30, 20, 25, 10, 5, 5, 60, 45, 30
+         )",
+        [],
+    )
+    .map_err(|e| format!("فشل إعادة ضبط إعدادات الجمعية: {}", e))?;
+
+    let _ = tx.execute("DELETE FROM sqlite_sequence", []);
+
+    tx.commit()
+        .map_err(|e| format!("فشل تثبيت إعادة ضبط المصنع: {}", e))?;
+
+    Ok(())
+}
+
 fn get_db_path() -> std::path::PathBuf {
     // 1. If running in development (inside the project repo)
     if let Ok(cur) = std::env::current_dir() {
@@ -2249,8 +2810,11 @@ fn main() {
             save_avatar_file,
             load_avatar_file,
             delete_avatar_file,
-            open_scanner_app
+            open_scanner_app,
+            create_backup,
+            restore_backup,
+            factory_reset
         ])
-        .run(tauri::generate_context!())
+        .run(tauri::generate_context!("tauri.conf.json"))
         .expect("خطأ أثناء تشغيل Tauri");
 }

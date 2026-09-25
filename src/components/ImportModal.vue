@@ -1,78 +1,94 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 text-right">
-      
-      <!-- Title -->
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-          📥 استيراد قائمة المستفيدين من ملف إكسل
-          <span class="text-xs font-normal text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">موسم {{ activeCampaignLabel }}</span>
-        </h3>
-        <button @click="close" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-      </div>
+  <div v-if="modelValue" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+    <div class="bg-white rounded-3xl w-[96vw] max-w-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] m-auto overflow-hidden text-right">
 
-      <!-- Step 1: Download Dynamic Template -->
-      <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 mb-4 flex items-center justify-between">
-        <div>
-          <p class="text-xs font-bold text-indigo-950">الخطوة الأولى: القالب المعتمد الديناميكي</p>
-          <p class="text-xs text-indigo-700 mt-0.5">يتضمن قائمة منسدلة تلقائية بالحالات الاجتماعية المعتمدة</p>
+      <!-- ══ Header ══ -->
+      <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-cyan-900/50">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">📥</div>
+          <div>
+            <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">استيراد قائمة المستفيدين</h2>
+            <p class="text-xs sm:text-sm text-cyan-200 font-medium mt-0.5">
+              من ملف إكسل — موسم <strong class="text-white font-black">{{ activeCampaignLabel }}</strong>
+            </p>
+          </div>
         </div>
-        <button 
-          @click="downloadTemplate" 
-          :disabled="isGeneratingTemplate"
-          class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-xs flex items-center gap-1"
-        >
-          <span>📄</span>
-          <span>{{ isGeneratingTemplate ? 'جارٍ الإنشاء...' : 'تحميل القالب (.xlsx)' }}</span>
+        <button @click="close" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+          <span class="text-2xl leading-none font-bold">✕</span>
         </button>
       </div>
 
-      <!-- Step 2: Instructions Checklist -->
-      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-        <p class="font-bold text-slate-800 mb-1">تعليمات ملء الملف:</p>
-        <p>• لا تقم بتغيير أسماء الأعمدة أو ترتيبها في السطر الأول.</p>
-        <p>• اختر الحالة الاجتماعية من <strong class="text-indigo-700 font-bold">القائمة المنسدلة المدمجة</strong> في عمود "الحالة الاجتماعية".</p>
-        <p>• الحالات المعتمدة حالياً: ({{ activeStatusesList.join('، ') }}).</p>
-        <p>• اكتب الأرقام (0، 1، 2...) في خانات الأطوار، ولا تترك الخانات فارغة.</p>
+      <!-- Body (scrollable) -->
+      <div class="p-6 sm:p-7 overflow-y-auto flex-1 space-y-5">
+
+        <!-- Step 1: Download Dynamic Template -->
+        <div class="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm sm:text-base font-black text-indigo-950">الخطوة الأولى: القالب المعتمد الديناميكي</p>
+            <p class="text-xs sm:text-sm text-indigo-700 mt-1 font-medium">يتضمن قائمة منسدلة تلقائية بالحالات الاجتماعية المعتمدة في النظام</p>
+          </div>
+          <button 
+            @click="downloadTemplate" 
+            :disabled="isGeneratingTemplate"
+            class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer shrink-0 active:scale-95"
+          >
+            <span>📄</span>
+            <span>{{ isGeneratingTemplate ? 'جارٍ الإنشاء...' : 'تحميل القالب (.xlsx)' }}</span>
+          </button>
+        </div>
+
+        <!-- Step 2: Instructions Checklist -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-xs sm:text-sm text-slate-700 space-y-2 leading-relaxed">
+          <p class="font-black text-slate-800 text-sm sm:text-base mb-2 flex items-center gap-2">
+            <span>📋</span>
+            <span>تعليمات ملء الملف بدقة:</span>
+          </p>
+          <p>• لا تقم بتغيير أسماء الأعمدة أو ترتيبها في السطر الأول من الجدول.</p>
+          <p>• اختر الحالة الاجتماعية من <strong class="text-indigo-700 font-bold">القائمة المنسدلة المدمجة</strong> في عمود "الحالة الاجتماعية".</p>
+          <p>• الحالات المعتمدة حالياً: (<strong class="text-slate-900 font-bold">{{ activeStatusesList.join('، ') }}</strong>).</p>
+          <p>• اكتب الأرقام (0، 1، 2...) في خانات أطوار الأبناء (ابتدائي، متوسط، ثانوي)، ولا تترك الخانات فارغة.</p>
+        </div>
+
+        <!-- Step 3: File Input & Upload -->
+        <div 
+          @dragover.prevent 
+          @drop.prevent="handleFileDrop"
+          class="border-2 border-dashed border-slate-300 hover:border-cyan-500 rounded-2xl p-8 sm:p-10 text-center transition cursor-pointer bg-slate-50/50 hover:bg-cyan-50/30"
+        >
+          <input type="file" accept=".xlsx, .xls" @change="handleFileSelect" class="hidden" id="excelFileModal" ref="excelFileInputRef" />
+          <label for="excelFileModal" class="cursor-pointer block">
+            <span class="text-4xl block mb-2">📊</span>
+            <span class="text-sm sm:text-base font-bold text-slate-800 block">
+              {{ selectedFileName || 'اضغط هنا لاختيار ملف الإكسل المكتمل أو اسحبه وأفلته هنا' }}
+            </span>
+            <span class="text-xs sm:text-sm text-slate-400 block mt-1.5">صيغة الملف المدعومة: XLSX أو XLS</span>
+          </label>
+        </div>
+
+        <!-- Error Message if any -->
+        <div v-if="parseError" class="text-sm text-red-600 bg-red-50 p-4 rounded-xl border border-red-200 font-medium">
+          {{ parseError }}
+        </div>
+
       </div>
 
-      <!-- Step 3: File Input & Upload -->
-      <div 
-        @dragover.prevent 
-        @drop.prevent="handleFileDrop"
-        class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-6 text-center transition cursor-pointer mb-4 bg-slate-50/50 hover:bg-indigo-50/20"
-      >
-        <input type="file" accept=".xlsx, .xls" @change="handleFileSelect" class="hidden" id="excelFileModal" ref="excelFileInputRef" />
-        <label for="excelFileModal" class="cursor-pointer block">
-          <span class="text-3xl block mb-1">📊</span>
-          <span class="text-xs font-bold text-slate-700 block">
-            {{ selectedFileName || 'اضغط هنا لاختيار ملف الإكسل المكتمل أو اسحبه إلى هنا' }}
-          </span>
-          <span class="text-[11px] text-slate-400 block mt-1">صيغة XLSX أو XLS</span>
-        </label>
-      </div>
-
-      <!-- Error Message if any -->
-      <div v-if="parseError" class="mb-4 text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
-        {{ parseError }}
-      </div>
-
-      <!-- Preview & Action Buttons -->
-      <div class="flex items-center justify-between border-t border-slate-100 pt-4">
+      <!-- ══ Footer ══ -->
+      <div class="px-6 sm:px-7 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
         <div>
-          <span v-if="parsedCount > 0" class="text-xs font-bold text-emerald-600 flex items-center gap-1">
-            ✓ تم اكتشاف {{ parsedCount }} سجل جاهز للاستيراد
+          <span v-if="parsedCount > 0" class="text-sm sm:text-base font-black text-emerald-600 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            تم اكتشاف {{ parsedCount }} سجل جاهز للاستيراد
           </span>
         </div>
-        <div class="flex gap-2 mr-auto">
-          <button @click="close" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">إلغاء</button>
-          <button 
-            @click="submitImport" 
-            :disabled="parsedCount === 0 || isImporting" 
-            class="px-4 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition flex items-center gap-1"
+        <div class="flex gap-3">
+          <button @click="close" class="px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إلغاء</button>
+          <button
+            @click="submitImport"
+            :disabled="parsedCount === 0 || isImporting"
+            class="px-7 py-2.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-black shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2"
           >
-            <span v-if="isImporting">جارٍ الاستيراد...</span>
-            <span v-else>تأكيد الاستيراد</span>
+            <span v-if="isImporting">⏳ جارٍ الاستيراد...</span>
+            <span v-else class="flex items-center gap-2"><span>📥</span><span>تأكيد الاستيراد</span></span>
           </button>
         </div>
       </div>
@@ -80,6 +96,7 @@
     </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed } from 'vue';

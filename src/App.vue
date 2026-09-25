@@ -33,6 +33,14 @@
           <span>طباعة</span>
         </button>
 
+        <!-- Backup & Security Action Button -->
+        <button @click="openBackupModal()"
+          class="bg-white border border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-700 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+          title="النسخ الاحتياطي والاسترجاع وإعادة ضبط المصنع">
+          <span class="text-base">💾</span>
+          <span>النسخ الاحتياطي والأمان</span>
+        </button>
+
         <!-- Primary Action: always single line, never wraps -->
         <button @click="openModal()"
           class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer active:scale-95 whitespace-nowrap shrink-0">
@@ -184,6 +192,17 @@
           <span>📅</span>
           <span class="absolute right-14 bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             إدارة المواسم
+          </span>
+        </button>
+        <!-- 9. Backup & Restore & Security -->
+        <button 
+          @click="openBackupModal()" 
+          class="w-10 h-10 rounded-xl flex items-center justify-center text-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all duration-150 cursor-pointer group relative"
+          title="النسخ الاحتياطي والأمان"
+        >
+          <span>💾</span>
+          <span class="absolute right-14 bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            النسخ الاحتياطي والأمان
           </span>
         </button>
       </div>
@@ -339,6 +358,15 @@
             <div class="text-right">
               <div class="font-bold">إدارة المواسم</div>
               <div class="text-[11px] text-slate-400 font-normal">تعديل، حذف، وتنظيم المواسم</div>
+            </div>
+          </button>
+
+          <button @click="openBackupModal(); closeSidebar()"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100/80 border border-emerald-200/70 transition group cursor-pointer">
+            <span class="text-xl group-hover:scale-110 transition-transform">💾</span>
+            <div class="text-right">
+              <div class="font-bold">النسخ الاحتياطي والأمان</div>
+              <div class="text-[11px] text-emerald-600 font-normal">تصدير مشفر، استرجاع آمن، وتصفير شامل</div>
             </div>
           </button>
         </div>
@@ -652,7 +680,7 @@
               </td>
               <td class="py-2 px-4 font-bold text-slate-800">
                 <div class="flex items-center gap-2.5">
-                  <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-xs text-slate-400 font-bold shadow-2xs">
+                  <div class="w-7 h-9 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-xs text-slate-400 font-bold shadow-2xs">
                     <img v-if="item.photo_path && avatarCache[item.photo_path]" :src="avatarCache[item.photo_path]" alt="" class="w-full h-full object-cover" />
                     <span v-else>👤</span>
                   </div>
@@ -866,23 +894,29 @@
 
     <!-- Beneficiary Modal -->
     <div v-if="showModal"
-      class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 z-50">
-      <div class="bg-white rounded-3xl max-w-4xl sm:max-w-5xl w-full max-h-[92vh] flex flex-col p-5 sm:p-7 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-        <!-- Header -->
-        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 shrink-0">
-          <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span>{{ form.id ? '✏️ تعديل بيانات مستفيد' : '➕ إضافة مستفيد جديد' }}</span>
-            <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
-              موسم {{ activeCampaignLabel }}
-            </span>
-          </h3>
-          <button @click="showModal = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer text-base leading-none">
-            ✕
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-5xl shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] m-auto overflow-hidden">
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-indigo-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">
+              {{ form.id ? '✏️' : '➕' }}
+            </div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">{{ form.id ? 'تعديل بيانات مستفيد' : 'إضافة مستفيد جديد' }}</h2>
+              <p class="text-xs sm:text-sm text-indigo-200 font-medium mt-0.5">
+                موسم {{ activeCampaignLabel }}
+              </p>
+            </div>
+          </div>
+          <button @click="showModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
           </button>
         </div>
+        <!-- Body wrapper replacing old p-5 sm:p-7 -->
+        <div class="overflow-y-auto p-5 sm:p-7 space-y-4 flex-1">
 
         <!-- Scrollable Modal Body -->
-        <div class="overflow-y-auto pr-1 pl-1 space-y-4 flex-1">
           <!-- Live Duplicate Alert (Current Campaign) -->
           <div v-if="!form.id && matchResult.match_type === 'current_campaign'" 
             class="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 text-rose-800 flex items-start gap-3 shadow-xs">
@@ -924,19 +958,19 @@
             <button type="button" @click="rolloverApplied = false" class="text-slate-400 hover:text-slate-600 text-xs">✕</button>
           </div>
 
-          <!-- Avatar Profile Card (Lightweight 1:1 Personal Photo & Scanner) -->
+          <!-- Avatar Profile Card (Lightweight 3:4 Vertical Portrait Photo & Scanner) -->
           <div 
-            class="bg-gradient-to-r from-slate-50 via-indigo-50/20 to-slate-50 border border-slate-200/90 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-xs transition-all"
+            class="bg-gradient-to-r from-slate-50 via-indigo-50/20 to-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs transition-all"
             @dragover.prevent="isAvatarDragging = true"
             @dragleave.prevent="isAvatarDragging = false"
             @drop.prevent="handleAvatarDrop"
             :class="{ 'ring-2 ring-indigo-500 bg-indigo-50/40 border-indigo-300': isAvatarDragging }"
           >
-            <!-- Left: Rounded Avatar Frame with Hover Overlay -->
-            <div class="flex items-center gap-3.5 w-full sm:w-auto">
+            <!-- Left: Portrait Vertical Avatar Frame with Hover Overlay -->
+            <div class="flex items-center gap-4 w-full sm:w-auto">
               <div 
                 @click="triggerAvatarFileInput"
-                class="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-300 hover:border-indigo-500 bg-white shadow-xs cursor-pointer shrink-0 transition-all active:scale-95 flex items-center justify-center select-none"
+                class="relative group w-20 h-[106px] sm:w-24 sm:h-32 rounded-2xl overflow-hidden border-2 border-slate-300 hover:border-indigo-500 bg-white shadow-xs cursor-pointer shrink-0 transition-all active:scale-95 flex items-center justify-center select-none"
                 title="انقر لاختيار صورة، أو اسحب صورة وأفلتها هنا، أو الصقها بـ Ctrl+V"
               >
                 <!-- Avatar image preview if available -->
@@ -947,14 +981,15 @@
                   class="w-full h-full object-cover" 
                 />
                 <!-- Fallback Icon placeholder -->
-                <div v-else class="flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors">
+                <div v-else class="flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors p-2 text-center">
                   <span class="text-3xl leading-none">👤</span>
-                  <span class="text-[10px] font-bold text-slate-500 mt-1">إضافة صورة</span>
+                  <span class="text-xs font-bold text-slate-500 mt-1.5">صورة شمسية</span>
+                  <span class="text-[10px] text-slate-400 font-mono">3:4 عمودية</span>
                 </div>
 
                 <!-- Hover overlay -->
-                <div class="absolute inset-0 bg-slate-900/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-bold gap-0.5 backdrop-blur-[1px]">
-                  <span>📷</span>
+                <div class="absolute inset-0 bg-slate-900/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold gap-1 backdrop-blur-[1px]">
+                  <span class="text-base">📷</span>
                   <span>{{ avatarPreviewUrl ? 'تغيير' : 'رفع' }}</span>
                 </div>
               </div>
@@ -971,15 +1006,15 @@
               <!-- Description & Shortcut Hint -->
               <div class="flex-1 text-right">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-xs font-black text-slate-800">الصورة الشخصية لولي الأمر</span>
-                  <span class="text-[10px] bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded font-bold">1:1 مربعة</span>
+                  <span class="text-sm font-black text-slate-800">الصورة الشخصية لولي الأمر</span>
+                  <span class="text-xs bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-lg font-bold">3:4 عمودية (شمسية)</span>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  انقر للإدراج، أو اسحب الصورة هنا، أو الصقها بـ 
-                  <kbd class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded font-mono font-bold text-[10px] border border-slate-300">Ctrl + V</kbd>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                  انقر للإدراج، أو اسحب الصورة هنا، أو الصقها مباشرة بـ 
+                  <kbd class="px-2 py-0.5 bg-slate-200 text-slate-800 rounded-md font-mono font-bold text-xs border border-slate-300">Ctrl + V</kbd>
                 </p>
-                <div v-if="form.photo_path" class="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-                  <span>✓</span> <span>تم إرفاق صورة شخصية معتمدة</span>
+                <div v-if="form.photo_path" class="text-xs text-emerald-600 font-bold flex items-center gap-1.5 mt-1.5">
+                  <span class="text-sm">✓</span> <span>تم إرفاق صورة شخصية معتمدة ومطابقة لمقاس الاستمارة</span>
                 </div>
               </div>
             </div>
@@ -1370,7 +1405,7 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="flex items-center justify-between pt-3 mt-3 border-t border-slate-200 shrink-0">
+        <div class="flex items-center justify-between px-6 py-3.5 bg-slate-50 border-t border-slate-200 shrink-0">
           <button @click="showModal = false"
             class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer">
             إلغاء
@@ -1395,91 +1430,119 @@
 
     <!-- New Campaign Modal -->
     <div v-if="showCampaignModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          📅 إنشاء موسم / حملة دراسية جديدة
-        </h3>
-        <div class="space-y-4">
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-teal-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">📅</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">إنشاء موسم دراسي جديد</h2>
+              <p class="text-xs sm:text-sm text-teal-200 font-medium mt-0.5">أدخل تسمية الموسم وخيارات الترحيل</p>
+            </div>
+          </div>
+          <button @click="showCampaignModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 sm:p-7 space-y-5 overflow-y-auto flex-1">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تسمية الموسم الدراسي:</label>
+            <label class="block text-sm font-bold text-slate-700 mb-1.5">تسمية الموسم الدراسي:</label>
             <input v-model="newCampaignYear" type="text" placeholder="مثال: 2026/2027 أو اكتب 2027 فقط"
-              class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              class="w-full text-base border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none font-bold text-slate-800" />
             <!-- Live preview of auto-formatted label -->
-            <p v-if="newCampaignYear.trim()" class="mt-1.5 text-xs flex items-center gap-1">
-              <span class="text-slate-400">سيُحفظ كـ:</span>
-              <span class="font-black text-indigo-700">
-                {{ /^\d{4}$/.test(newCampaignYear.trim()) ?
-                  `${newCampaignYear.trim()}/${parseInt(newCampaignYear.trim()) +
-                  1}` : newCampaignYear.trim() }}
+            <p v-if="newCampaignYear.trim()" class="mt-2 text-sm flex items-center gap-1.5">
+              <span class="text-slate-500">سيُحفظ كـ:</span>
+              <span class="font-black text-teal-700 text-base">
+                {{ /^d{4}$/.test(newCampaignYear.trim()) ?
+                  `${newCampaignYear.trim()}/${parseInt(newCampaignYear.trim()) + 1}` : newCampaignYear.trim() }}
               </span>
             </p>
           </div>
-          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+          <div class="bg-teal-50/50 border border-teal-200 p-4 rounded-2xl">
+            <label class="flex items-center gap-2.5 cursor-pointer text-sm font-bold text-slate-800">
               <input type="checkbox" v-model="rolloverPrevious"
-                class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                class="w-4 h-4 text-teal-600 rounded focus:ring-teal-500 cursor-pointer" />
               ترحيل المستفيدين المسجلين من الموسم السابق
             </label>
-            <p class="text-xs text-slate-400 mt-1 mr-6">
+            <p class="text-xs text-slate-500 mt-1.5 mr-6 leading-relaxed">
               يتم نسخ أولياء الأمور إلى الموسم الجديد مع إمكانية تعديل أطوار أبنائهم دون المساس بسجلات الموسم الماضي.
             </p>
           </div>
         </div>
-        <div class="flex justify-end gap-2 mt-6">
+
+        <!-- Footer -->
+        <div class="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
           <button @click="showCampaignModal = false"
-            class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">إلغاء</button>
+            class="px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إلغاء</button>
           <button @click="submitNewCampaign"
-            class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium">إنشاء
-            الموسم</button>
+            class="px-7 py-2.5 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-black shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2">
+            <span>📅</span><span>إنشاء الموسم</span>
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Rollover Modal: transfer beneficiaries between seasons -->
     <div v-if="showRolloverModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-        <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
-          ↩ ترحيل المستفيدين بين المواسم
-        </h3>
-        <p class="text-xs text-slate-500 mb-5">
-          يُنقل المستفيدون الغائبون من الموسم المصدر إلى الموسم الحالي، دون المساس بالسجلات الموجودة مسبقاً.
-        </p>
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-amber-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-amber-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">↩</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">ترحيل المستفيدين بين المواسم</h2>
+              <p class="text-xs sm:text-sm text-amber-200 font-medium mt-0.5">يُنقل المستفيدون الغائبون دون المساس بالسجلات الموجودة</p>
+            </div>
+          </div>
+          <button @click="showRolloverModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
+        </div>
 
-        <!-- Target (current) -->
-        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-4 flex items-center gap-3">
-          <span class="text-xl">🎯</span>
+        <!-- Body -->
+        <div class="p-6 sm:p-7 space-y-5 overflow-y-auto flex-1">
+          <!-- Target (current) -->
+          <div class="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-4 flex items-center gap-3.5">
+            <span class="text-2xl">🎯</span>
+            <div>
+              <p class="text-xs text-indigo-600 font-bold">الموسم الهدف (الحالي)</p>
+              <p class="text-base font-black text-indigo-950 mt-0.5">{{ activeCampaignLabel }}</p>
+            </div>
+          </div>
+
+          <!-- Source selector -->
           <div>
-            <p class="text-[11px] text-indigo-500 font-semibold">الموسم الهدف (الحالي)</p>
-            <p class="text-sm font-black text-indigo-900">{{ activeCampaignLabel }}</p>
+            <label class="block text-sm font-bold text-slate-700 mb-2">اختر موسم المصدر (المنقول منه):</label>
+            <select v-model="rolloverFromId"
+              class="w-full text-base border border-slate-300 rounded-xl p-3 bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold text-slate-800">
+              <option :value="null" disabled>— اختر موسماً —</option>
+              <option v-for="c in campaigns.filter(c => c.id !== selectedCampaignId)" :key="c.id" :value="c.id">
+                {{ c.year_label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Info notice -->
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 leading-relaxed flex items-start gap-2.5">
+            <span class="text-base shrink-0">💡</span>
+            <div>
+              <span class="font-bold">ملاحظة هامة:</span>
+              لن يُنقل إلا المستفيدون غير المسجلين في الموسم الحالي. السجلات الموجودة مسبقاً لن تُمس بأي شكل.
+            </div>
           </div>
         </div>
 
-        <!-- Source selector -->
-        <div class="mb-5">
-          <label class="block text-xs font-bold text-slate-600 mb-1.5">اختر موسم المصدر (المنقول منه):</label>
-          <select v-model="rolloverFromId"
-            class="w-full text-sm border border-slate-300 rounded-xl p-2.5 bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium">
-            <option :value="null" disabled>— اختر موسماً —</option>
-            <option v-for="c in campaigns.filter(c => c.id !== selectedCampaignId)" :key="c.id" :value="c.id">
-              {{ c.year_label }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Info notice -->
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800">
-          <span class="font-bold">ملاحظة:</span>
-          لن يُنقل إلا المستفيدون غير المسجلين في الموسم الحالي. السجلات الموجودة لن تُمس.
-        </div>
-
-        <div class="flex justify-end gap-2">
+        <!-- Footer -->
+        <div class="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
           <button @click="showRolloverModal = false"
-            class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">إلغاء</button>
+            class="px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إلغاء</button>
           <button @click="submitRollover" :disabled="!rolloverFromId"
-            class="px-5 py-2 text-sm bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">
-            ↩ تنفيذ الترحيل
+            class="px-7 py-2.5 text-sm bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-black shadow-md transition cursor-pointer flex items-center gap-2">
+            <span>↩</span><span>تنفيذ الترحيل</span>
           </button>
         </div>
       </div>
@@ -1487,23 +1550,28 @@
 
     <!-- Campaign Management Modal -->
     <div v-if="showCampaignMgmtModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-200 text-right">
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] m-auto overflow-hidden text-right">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-          <div>
-            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              📅 إدارة المواسم الدراسية
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">تعديل تسمية المواسم، حذف الفارغة، وتعيين الموسم النشط</p>
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-teal-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">📅</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">إدارة المواسم الدراسية</h2>
+              <p class="text-xs sm:text-sm text-teal-200 font-medium mt-0.5">تعديل تسمية المواسم، حذف الفارغة، وتعيين الموسم النشط</p>
+            </div>
           </div>
-          <button @click="showCampaignMgmtModal = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+          <button @click="showCampaignMgmtModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-1">
 
         <!-- Campaign List Table -->
-        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto mb-4">
-          <table class="w-full text-right text-xs">
+        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto mb-4">
+          <table class="w-full text-right text-sm">
             <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
               <tr>
                 <th class="py-2.5 px-3">الموسم الدراسي</th>
@@ -1566,48 +1634,51 @@
             🔒 المواسم التي تحتوي على مستفيدين محمية من الحذف تلقائياً.
           </p>
           <button @click="showCampaignMgmtModal = false"
-            class="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">إغلاق</button>
+            class="px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إغلاق</button>
+        </div>
         </div>
       </div>
     </div>
 
     <!-- Organization Settings Modal -->
     <div v-if="showSettingsModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-4xl sm:max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-right">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/90 shrink-0">
-          <div>
-            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>⚙️</span>
-              <span>إعدادات النظام والأولويات</span>
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">تخصيص هوية الجمعية، معايير نقاط الحالة العائلية والمتمدرسين، وعتبات تصنيف الاستحقاق</p>
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-5xl shadow-2xl border border-slate-200 flex flex-col h-[92vh] m-auto overflow-hidden text-right">
+        <!-- ══ Modal Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-violet-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-violet-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">⚙️</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">إعدادات النظام والأولويات</h2>
+              <p class="text-xs sm:text-sm text-violet-200 font-medium mt-0.5">تخصيص هوية الجمعية، معايير نقاط الحالة العائلية والمتمدرسين، وعتبات تصنيف الاستحقاق</p>
+            </div>
           </div>
-          <button @click="showSettingsModal = false" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer p-1 rounded-lg hover:bg-slate-200/60 transition">✕</button>
+          <button @click="showSettingsModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
 
         <!-- Segmented Tab Navigation -->
-        <div class="flex items-center gap-2 px-6 pt-3 pb-2.5 bg-slate-100/70 border-b border-slate-200 shrink-0">
-          <button 
-            type="button" 
-            @click="activeSettingsTab = 'org'" 
-            :class="activeSettingsTab === 'org' 
-              ? 'bg-white text-indigo-700 shadow-xs border-indigo-200 font-bold' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold border-transparent'"
-            class="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
+        <div class="flex items-center gap-2 px-6 pt-3 pb-3 bg-white border-b border-slate-200 shrink-0">
+          <button
+            type="button"
+            @click="activeSettingsTab = 'org'"
+            :class="activeSettingsTab === 'org'
+              ? 'bg-violet-600 text-white shadow-md border-violet-600 font-bold'
+              : 'text-slate-600 hover:text-violet-700 hover:bg-violet-50 font-semibold border-slate-200'"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
           >
             <span class="text-base">🏢</span>
             <span>معلومات وهوية الجمعية</span>
           </button>
 
-          <button 
-            type="button" 
-            @click="activeSettingsTab = 'priority'" 
-            :class="activeSettingsTab === 'priority' 
-              ? 'bg-white text-indigo-700 shadow-xs border-indigo-200 font-bold' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold border-transparent'"
-            class="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
+          <button
+            type="button"
+            @click="activeSettingsTab = 'priority'"
+            :class="activeSettingsTab === 'priority'
+              ? 'bg-violet-600 text-white shadow-md border-violet-600 font-bold'
+              : 'text-slate-600 hover:text-violet-700 hover:bg-violet-50 font-semibold border-slate-200'"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
           >
             <span class="text-base">🎯</span>
             <span>نظام التنقيط ومعايير الأولوية</span>
@@ -1615,7 +1686,7 @@
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="overflow-y-auto p-5 sm:p-7 flex-1 text-xs">
+        <div class="overflow-y-auto p-5 sm:p-6 flex-1 text-sm">
           <!-- TAB 1: Organization & Identity Settings -->
           <div v-if="activeSettingsTab === 'org'" class="space-y-5 animate-in fade-in duration-150">
             <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-3 text-slate-700 flex items-center gap-2 text-xs">
@@ -1951,24 +2022,29 @@
 
     <!-- Social Status Management Modal (Protected Lookup Table) -->
     <div v-if="showStatusModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 text-right">
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] m-auto overflow-hidden text-right">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-          <div>
-            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              🏷️ إدارة الحالات الاجتماعية
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">إضافة، تعديل، وحذف الحالات الاجتماعية مع حماية السجلات المرتبطة</p>
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-emerald-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">🏷️</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">إدارة الحالات الاجتماعية</h2>
+              <p class="text-xs sm:text-sm text-emerald-200 font-medium mt-0.5">إضافة، تعديل، وحذف الحالات الاجتماعية مع حماية السجلات المرتبطة</p>
+            </div>
           </div>
-          <button @click="showStatusModal = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+          <button @click="showStatusModal = false" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-1">
 
         <!-- Add New Status Form -->
-        <form @submit.prevent="addSocialStatus" class="flex items-center gap-2 mb-4">
+        <form @submit.prevent="addSocialStatus" class="flex items-center gap-2 mb-4 bg-emerald-50/50 border border-emerald-200 p-3 rounded-xl">
           <input v-model="newStatusName" type="text" placeholder="اسم الحالة الاجتماعية (أرملة، أيتام...)"
-            class="flex-1 text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            class="flex-1 text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
             required />
           <div class="flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" title="نقاط الأولوية لهذه الحالة">
             <span class="text-xs text-slate-500 font-bold">النقاط:</span>
@@ -1990,8 +2066,8 @@
         </div>
 
         <!-- Status List -->
-        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto mb-4">
-          <table class="w-full text-right text-xs">
+        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto mb-4">
+          <table class="w-full text-right text-sm">
             <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
               <tr>
                 <th class="py-2.5 px-3">الحالة الاجتماعية</th>
@@ -2058,27 +2134,32 @@
             🔒 الحالات المرتبطة بمستفيدين تكون محمية تلقائياً للحفاظ على سلامة السجلات.
           </p>
           <button @click="showStatusModal = false"
-            class="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">إغلاق</button>
+            class="px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إغلاق</button>
         </div>
-
+        </div>
       </div>
     </div>
 
     <!-- Education Levels Management Modal (Protected Lookup Table by Educational Stage) -->
     <div v-if="showEducationLevelModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-200 text-right">
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] m-auto overflow-hidden text-right">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-          <div>
-            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              🏫 إدارة الأطوار والسنوات الدراسية
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">تخصيص السنوات والمراحل التعليمية مع حماية السجلات المرتبطة بأطفال</p>
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-blue-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-blue-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">🏫</div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">إدارة الأطوار والسنوات الدراسية</h2>
+              <p class="text-xs sm:text-sm text-blue-200 font-medium mt-0.5">تخصيص السنوات والمراحل التعليمية مع حماية السجلات المرتبطة بأطفال</p>
+            </div>
           </div>
-          <button @click="closeEducationLevelModal" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">✕</button>
+          <button @click="closeEducationLevelModal" class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-1">
 
         <!-- Add New Education Level Form -->
         <form @submit.prevent="addEducationLevel" class="flex flex-wrap sm:flex-nowrap gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -2167,9 +2248,10 @@
             🔒 السنوات المرتبطة بأطفال مستفيدين تكون محمية تلقائياً للحفاظ على سلامة الإحصائيات.
           </p>
           <button @click="closeEducationLevelModal"
-            class="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">إغلاق</button>
+            class="px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">إغلاق</button>
         </div>
 
+        </div>
       </div>
     </div>
 
@@ -2196,77 +2278,79 @@
     <!-- Sequence Gap & Missing Numbers Audit Modal  -->
     <!-- =========================================== -->
     <div v-if="showSequenceAuditModal"
-      class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 z-50 overflow-y-auto no-print">
-      <div class="bg-white rounded-2xl w-full max-w-2xl sm:max-w-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] m-auto overflow-hidden" dir="rtl">
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3 sm:px-6 bg-gradient-to-r from-violet-50/70 to-indigo-50/40 shrink-0">
-          <div class="flex items-center gap-2.5">
-            <span class="text-2xl">🔢</span>
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto no-print animate-fade-in">
+      <div class="bg-white rounded-3xl w-[96vw] max-w-5xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] m-auto overflow-hidden" dir="rtl">
+        <!-- ══ Header ══ -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-950 via-violet-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-violet-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">🔢</div>
             <div>
-              <h3 class="text-base font-black text-slate-900">فحص الأرقام المتخلفة والشاغرة في الترتيب</h3>
-              <p class="text-[11px] text-slate-500 mt-0.5">كشف الأرقام الغائبة في الترقيم التسلسلي، حساب عددها، وتحديد الفجوات بدقة</p>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">فحص الأرقام المتخلفة والشاغرة</h2>
+              <p class="text-xs sm:text-sm text-violet-200 font-medium mt-0.5">كشف الأرقام الغائبة في الترقيم التسلسلي، حساب عددها، وتحديد الفجوات بدقة</p>
             </div>
           </div>
           <button @click="showSequenceAuditModal = false"
-            class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200/70 transition text-lg font-bold cursor-pointer">✕</button>
+            class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer" title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          <div v-if="isSequenceAuditLoading" class="flex flex-col items-center justify-center p-8 text-slate-500">
-            <span class="text-2xl animate-spin mb-2">⏳</span>
-            <span class="text-xs font-bold">جاري جلب الأرقام المسجلة في الموسم...</span>
+        <div class="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
+          <div v-if="isSequenceAuditLoading" class="flex flex-col items-center justify-center p-12 text-slate-500">
+            <span class="text-4xl animate-spin mb-3">⏳</span>
+            <span class="text-sm font-bold">جاري جلب وفحص الأرقام المسجلة في الموسم...</span>
           </div>
           
           <template v-else>
           <!-- Live Analysis KPI Cards -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
             <!-- 1. Present Numbers Count -->
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-right">
-              <span class="text-[11px] text-slate-500 font-medium">الأرقام المسجلة (الموجودة)</span>
-              <div class="text-xl font-black text-slate-800 font-mono mt-0.5">
-                {{ sequenceAnalysis.present.length }} <span class="text-xs font-normal text-slate-400">رقم</span>
+            <div class="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-4 sm:p-5 text-right">
+              <span class="text-xs sm:text-sm text-slate-500 font-bold block mb-1">الأرقام المسجلة (الموجودة)</span>
+              <div class="text-2xl sm:text-3xl font-black text-slate-800 font-mono mt-0.5">
+                {{ sequenceAnalysis.present.length }} <span class="text-sm font-normal text-slate-400">رقم</span>
               </div>
             </div>
 
             <!-- 2. Missing Numbers Count (Highlight) -->
             <div 
-              :class="sequenceAnalysis.missingCount > 0 ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900'"
-              class="border rounded-xl p-3 text-right shadow-2xs"
+              :class="sequenceAnalysis.missingCount > 0 ? 'bg-amber-50/90 border-amber-300 text-amber-900' : 'bg-emerald-50/90 border-emerald-300 text-emerald-900'"
+              class="border rounded-2xl p-4 sm:p-5 text-right shadow-xs"
             >
               <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold">الأرقام المتخلفة (الغائبة)</span>
+                <span class="text-xs sm:text-sm font-black">الأرقام المتخلفة (الغائبة)</span>
                 <span 
                   :class="sequenceAnalysis.missingCount > 0 ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'"
-                  class="font-mono text-[10px] px-2 py-0.5 rounded-full font-black"
+                  class="font-mono text-xs px-2.5 py-1 rounded-full font-black"
                 >
                   {{ sequenceAnalysis.missingCount }} غائب
                 </span>
               </div>
-              <div class="text-2xl font-black font-mono mt-0.5">
+              <div class="text-3xl sm:text-4xl font-black font-mono mt-1">
                 {{ sequenceAnalysis.missingCount }}
               </div>
             </div>
 
             <!-- 3. Sequence Range -->
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-right">
-              <span class="text-[11px] text-slate-500 font-medium">نطاق الترقيم الكامل</span>
-              <div class="text-sm font-bold text-slate-800 font-mono mt-1">
+            <div class="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-4 sm:p-5 text-right">
+              <span class="text-xs sm:text-sm text-slate-500 font-bold block mb-1">نطاق الترقيم الكامل</span>
+              <div class="text-base sm:text-lg font-black text-slate-800 font-mono mt-1">
                 <span v-if="sequenceAnalysis.present.length > 0">
-                  من <strong class="text-violet-700 text-base">{{ sequenceAnalysis.min }}</strong> إلى <strong class="text-violet-700 text-base">{{ sequenceAnalysis.max }}</strong>
+                  من <strong class="text-violet-700 text-lg sm:text-xl">{{ sequenceAnalysis.min }}</strong> إلى <strong class="text-violet-700 text-lg sm:text-xl">{{ sequenceAnalysis.max }}</strong>
                 </span>
-                <span v-else class="text-slate-400 text-xs">لا توجد أرقام</span>
+                <span v-else class="text-slate-400 text-sm">لا توجد أرقام</span>
               </div>
             </div>
           </div>
 
           <!-- Missing Numbers Details Area -->
-          <div v-if="sequenceAnalysis.missingCount > 0" class="bg-rose-50/60 border border-rose-200 rounded-xl p-4 space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5 text-xs font-bold text-rose-900">
-                <span>⚠️</span>
+          <div v-if="sequenceAnalysis.missingCount > 0" class="bg-rose-50/80 border border-rose-200 rounded-2xl p-5 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2 text-sm sm:text-base font-black text-rose-950">
+                <span class="text-xl">⚠️</span>
                 <span>قائمة الأرقام غير الموجودة (الغائبة في الترتيب):</span>
-                <span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-mono text-[11px]">
+                <span class="bg-rose-200 text-rose-900 px-3 py-1 rounded-full font-mono text-xs sm:text-sm font-black">
                   {{ sequenceAnalysis.missingCount }} أرقام
                 </span>
               </div>
@@ -2274,7 +2358,7 @@
               <button 
                 type="button" 
                 @click="copyMissingNumbers" 
-                class="bg-white hover:bg-rose-100/70 border border-rose-300 text-rose-800 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                class="bg-white hover:bg-rose-100/80 border border-rose-300 text-rose-800 text-xs sm:text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 <span>📋</span>
                 <span>نسخ الأرقام الغائبة</span>
@@ -2282,11 +2366,11 @@
             </div>
 
             <!-- Tags Flow -->
-            <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+            <div class="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-3 bg-white/70 rounded-xl border border-rose-100">
               <span 
                 v-for="num in sequenceAnalysis.missing" 
                 :key="num"
-                class="bg-white border border-rose-300 text-rose-800 font-mono font-bold text-xs px-2.5 py-1 rounded-lg shadow-2xs hover:bg-rose-600 hover:text-white transition cursor-default"
+                class="bg-white border-2 border-rose-200 text-rose-800 font-mono font-black text-sm px-3.5 py-1.5 rounded-xl shadow-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition cursor-default"
                 title="رقم غائب / شاغر في التسلسل"
               >
                 {{ num }}
@@ -2294,12 +2378,12 @@
             </div>
 
             <!-- Quick Action: Fill vacancy -->
-            <div class="pt-2 border-t border-rose-200 flex items-center justify-between text-xs flex-wrap gap-2">
-              <span class="text-slate-600">يمكنك ملء الفجوات بإضافة مستفيد يحمل أول رقم شاغر:</span>
+            <div class="pt-3 border-t border-rose-200/80 flex items-center justify-between text-sm flex-wrap gap-3">
+              <span class="text-slate-700 font-medium">يمكنك ملء الفجوات بإضافة مستفيد يحمل أول رقم شاغر:</span>
               <button 
                 type="button" 
                 @click="useMissingNumberToAdd(sequenceAnalysis.missing[0])" 
-                class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer active:scale-95"
+                class="bg-rose-600 hover:bg-rose-700 text-white font-black text-sm px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 <span>➕</span>
                 <span>إضافة مستفيد بالرقم الشاغر ({{ sequenceAnalysis.missing[0] }})</span>
@@ -2308,11 +2392,11 @@
           </div>
 
           <!-- Perfect Sequence State (0 missing) -->
-          <div v-else-if="sequenceAnalysis.present.length > 0" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
-            <span class="text-2xl">🎉</span>
+          <div v-else-if="sequenceAnalysis.present.length > 0" class="bg-emerald-50 border border-emerald-300 rounded-2xl p-6 flex items-center gap-4">
+            <span class="text-3xl">🎉</span>
             <div>
-              <p class="text-xs font-bold text-emerald-900">ترقيم كامل ومتسلسل بنسبة 100%!</p>
-              <p class="text-[11px] text-emerald-700 mt-0.5">
+              <p class="text-base font-black text-emerald-950">ترقيم كامل ومتسلسل بنسبة 100%!</p>
+              <p class="text-sm text-emerald-800 mt-1">
                 لا توجد أي أرقام متخلفة أو فجوات بين الرقم {{ sequenceAnalysis.min }} والرقم {{ sequenceAnalysis.max }}.
               </p>
             </div>
@@ -2322,14 +2406,14 @@
         </div>
 
         <!-- Footer -->
-        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/80 shrink-0">
-          <div class="text-[11px] text-slate-500 font-medium">
+        <div class="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
+          <div class="text-xs sm:text-sm text-slate-500 font-semibold">
             تحديث فوري وتحليل تلقائي للفجوات التسلسلية
           </div>
           <button 
             type="button" 
             @click="showSequenceAuditModal = false" 
-            class="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            class="px-6 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl transition cursor-pointer shadow-xs"
           >
             إغلاق
           </button>
@@ -2341,372 +2425,378 @@
     <!-- Custom Print Modal                          -->
     <!-- =========================================== -->
     <div v-if="showPrintCustomModal"
-      class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 z-50 overflow-y-auto no-print">
-      <div class="bg-white rounded-3xl w-full max-w-4xl sm:max-w-5xl shadow-2xl border border-slate-200 flex flex-col max-h-[88vh] m-auto overflow-hidden" dir="rtl">
-        <!-- Header (Fixed at top) -->
-        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3 sm:px-6 bg-slate-50/80 shrink-0">
-          <div class="flex items-center gap-2.5">
-            <span class="text-xl">🖨️</span>
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto no-print animate-fade-in">
+      <div
+        class="bg-white rounded-3xl w-[96vw] max-w-6xl shadow-2xl border border-slate-200 flex flex-col h-[92vh] m-auto overflow-hidden"
+        dir="rtl">
+
+        <!-- ══ Modal Header ══ -->
+        <div
+          class="px-6 py-4 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-indigo-900/50">
+          <div class="flex items-center gap-3.5">
+            <div
+              class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">
+              🖨️
+            </div>
             <div>
-              <h3 class="text-base font-black text-slate-900">خيارات وتخصيص الطباعة</h3>
-              <p class="text-[11px] text-slate-500 mt-0.5">تحديد نوع المطبوع، نطاق المستفيدين، وتوجيه الصفحة</p>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">خيارات وتخصيص الطباعة</h2>
+              <p class="text-xs sm:text-sm text-indigo-200 font-medium mt-0.5">
+                تحديد نوع المطبوع، نطاق المستفيدين، وتوجيه الصفحة
+              </p>
             </div>
           </div>
           <button @click="showPrintCustomModal = false"
-            class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200/70 transition text-lg font-bold cursor-pointer">✕</button>
+            class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer"
+            title="إغلاق">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
 
-        <!-- Body (Scrollable if height exceeds screen) -->
-        <div class="flex-1 overflow-y-auto p-3.5 sm:p-5">
-          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 sm:gap-4">
-            <!-- Right Column (7 cols): Document Type & Beneficiary Scope -->
-            <div class="sm:col-span-7 space-y-3">
+        <!-- ══ Modal Body ══ -->
+        <div class="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5 text-slate-800">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+            <!-- ── Right Column (7 cols): Document Type & Beneficiary Scope ── -->
+            <div class="lg:col-span-7 space-y-4">
+
               <!-- 1. Document Type -->
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">1. نوع المطبوع:</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <button 
-                    type="button"
-                    @click="printDocType = 'list'; printOrientation = 'landscape'"
-                    :class="printDocType === 'list' ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 text-indigo-950 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'"
-                    class="flex flex-col items-start p-2.5 rounded-xl border text-right transition cursor-pointer"
-                  >
-                    <div class="flex items-center justify-between w-full">
-                      <span class="text-lg">📋</span>
-                      <span v-if="printDocType === 'list'" class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+              <section
+                class="bg-gradient-to-br from-indigo-50/70 to-indigo-100/30 border border-indigo-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div class="flex items-center gap-2.5 border-b border-indigo-100 pb-2.5">
+                  <span class="text-2xl">📋</span>
+                  <div>
+                    <h3 class="font-black text-indigo-950 text-base sm:text-lg">1. نوع المطبوع</h3>
+                    <p class="text-xs text-indigo-600 font-medium mt-0.5">اختر نوع الوثيقة المراد طباعتها</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <button type="button" @click="printDocType = 'list'; printOrientation = 'landscape'"
+                    :class="printDocType === 'list' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/30 text-indigo-950' : 'border-slate-200 hover:border-indigo-300 text-slate-700 bg-white'"
+                    class="flex flex-col items-start p-3.5 rounded-xl border-2 text-right transition cursor-pointer shadow-xs">
+                    <div class="flex items-center justify-between w-full mb-2">
+                      <span class="text-2xl">📋</span>
+                      <span v-if="printDocType === 'list'"
+                        class="w-3 h-3 rounded-full bg-indigo-600 shadow-xs"></span>
                     </div>
-                    <span class="font-bold text-xs mt-1.5">محضر التوزيع (قائمة)</span>
-                    <span class="text-[10px] text-slate-500 font-normal mt-0.5">جدول إحصاء وتوزيع الحقائب</span>
+                    <span class="font-black text-sm">محضر التوزيع</span>
+                    <span class="text-xs text-slate-500 font-medium mt-0.5">جدول إحصاء وتوزيع الحقائب</span>
                   </button>
 
-                  <button 
-                    type="button"
-                    @click="printDocType = 'forms'; printOrientation = 'portrait'"
-                    :class="printDocType === 'forms' ? 'border-teal-600 bg-teal-50/80 ring-2 ring-teal-500/20 text-teal-950 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'"
-                    class="flex flex-col items-start p-2.5 rounded-xl border text-right transition cursor-pointer"
-                  >
-                    <div class="flex items-center justify-between w-full">
-                      <span class="text-lg">📄</span>
-                      <span v-if="printDocType === 'forms'" class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                  <button type="button" @click="printDocType = 'forms'; printOrientation = 'portrait'"
+                    :class="printDocType === 'forms' ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-500/30 text-teal-950' : 'border-slate-200 hover:border-teal-300 text-slate-700 bg-white'"
+                    class="flex flex-col items-start p-3.5 rounded-xl border-2 text-right transition cursor-pointer shadow-xs">
+                    <div class="flex items-center justify-between w-full mb-2">
+                      <span class="text-2xl">📄</span>
+                      <span v-if="printDocType === 'forms'"
+                        class="w-3 h-3 rounded-full bg-teal-600 shadow-xs"></span>
                     </div>
-                    <span class="font-bold text-xs mt-1.5">إستمارة الدخول المدرسي</span>
-                    <span class="text-[10px] text-slate-500 font-normal mt-0.5">استمارة رسمية لكل مستفيد</span>
+                    <span class="font-black text-sm">إستمارة الدخول المدرسي</span>
+                    <span class="text-xs text-slate-500 font-medium mt-0.5">استمارة رسمية لكل مستفيد</span>
                   </button>
                 </div>
-              </div>
+              </section>
 
               <!-- 2. Target Beneficiaries Scope -->
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">2. المستفيدين المشمولين بالطباعة:</label>
-                <div class="space-y-1.5">
+              <section class="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div class="flex items-center gap-2.5 border-b border-slate-200 pb-2.5">
+                  <span class="text-2xl">👥</span>
+                  <div>
+                    <h3 class="font-black text-slate-900 text-base sm:text-lg">2. المستفيدون المشمولون</h3>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5">حدد نطاق المستفيدين للطباعة</p>
+                  </div>
+                </div>
+                <div class="space-y-2">
+
                   <!-- All -->
-                  <label 
-                    @click="printScope = 'all'"
-                    :class="printScope === 'all' ? 'border-indigo-400 bg-indigo-50/40 font-bold text-slate-900' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex items-center justify-between p-2 rounded-xl border cursor-pointer transition text-xs"
-                  >
-                    <div class="flex items-center gap-2">
-                      <input type="radio" value="all" v-model="printScope" class="text-indigo-600 focus:ring-indigo-500" />
-                      <span>جميع المسجلين بالموسم</span>
+                  <label @click="printScope = 'all'"
+                    :class="printScope === 'all' ? 'border-indigo-400 bg-indigo-50/60 text-slate-900 ring-1 ring-indigo-300' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
+                    class="flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition">
+                    <div class="flex items-center gap-2.5">
+                      <input type="radio" value="all" v-model="printScope"
+                        class="text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                      <span class="font-bold text-sm">جميع المسجلين بالموسم</span>
                     </div>
-                    <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono text-[10px]">
+                    <span class="bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg font-mono text-xs font-bold">
                       {{ sortedBeneficiaries.length }} مستفيد
                     </span>
                   </label>
 
                   <!-- Selected Checkboxes -->
-                  <label 
+                  <label
                     @click="selectedBeneficiaryIds.length > 0 && (printScope = 'selected')"
                     :class="[
-                      printScope === 'selected' ? 'border-indigo-400 bg-indigo-50/40 font-bold text-slate-900' : 'border-slate-200 text-slate-700',
+                      printScope === 'selected' ? 'border-indigo-400 bg-indigo-50/60 text-slate-900 ring-1 ring-indigo-300' : 'border-slate-200 text-slate-700',
                       selectedBeneficiaryIds.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 cursor-pointer'
                     ]"
-                    class="flex items-center justify-between p-2 rounded-xl border transition text-xs"
-                  >
-                    <div class="flex items-center gap-2">
-                      <input type="radio" value="selected" v-model="printScope" :disabled="selectedBeneficiaryIds.length === 0" class="text-indigo-600 focus:ring-indigo-500" />
-                      <span>المستفيدين المحددين (Checkbox)</span>
+                    class="flex items-center justify-between p-3 rounded-xl border-2 transition">
+                    <div class="flex items-center gap-2.5">
+                      <input type="radio" value="selected" v-model="printScope"
+                        :disabled="selectedBeneficiaryIds.length === 0"
+                        class="text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                      <span class="font-bold text-sm">المستفيدين المحددين (Checkbox)</span>
                     </div>
-                    <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-mono text-[10px]">
+                    <span class="bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded-lg font-mono text-xs font-bold">
                       {{ selectedBeneficiaryIds.length }} محدد
                     </span>
                   </label>
 
                   <!-- Range -->
-                  <label 
-                    @click="printScope = 'range'"
-                    :class="printScope === 'range' ? 'border-indigo-400 bg-indigo-50/40 font-bold text-slate-900' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex flex-col p-2 rounded-xl border cursor-pointer transition text-xs gap-1.5"
-                  >
+                  <label @click="printScope = 'range'"
+                    :class="printScope === 'range' ? 'border-indigo-400 bg-indigo-50/60 text-slate-900 ring-1 ring-indigo-300' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
+                    class="flex flex-col p-3 rounded-xl border-2 cursor-pointer transition gap-2">
                     <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <input type="radio" value="range" v-model="printScope" class="text-indigo-600 focus:ring-indigo-500" />
-                        <span>نطاق أرقام (من ... إلى ...)</span>
+                      <div class="flex items-center gap-2.5">
+                        <input type="radio" value="range" v-model="printScope"
+                          class="text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                        <span class="font-bold text-sm">نطاق أرقام (من ... إلى ...)</span>
                       </div>
-                      <span class="text-indigo-600 text-[10px] font-mono">حسب عمود الرقم</span>
+                      <span class="text-indigo-600 text-xs font-bold">حسب عمود الرقم</span>
                     </div>
-
-                    <!-- Range Inputs -->
-                    <div v-if="printScope === 'range'" class="flex items-center gap-2 pt-1 px-3" @click.stop>
-                      <div class="flex items-center gap-1.5 flex-1">
-                        <span class="text-slate-600 font-bold text-xs">من:</span>
-                        <input 
-                          type="number" 
-                          v-model.number="printRangeFrom" 
-                          min="1" 
-                          class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
-                        />
+                    <div v-if="printScope === 'range'" class="flex items-center gap-3 pt-1 px-4" @click.stop>
+                      <div class="flex items-center gap-2 flex-1">
+                        <span class="text-slate-700 font-bold text-sm whitespace-nowrap">من:</span>
+                        <input type="number" v-model.number="printRangeFrom" min="1"
+                          class="w-full text-center font-mono font-bold bg-white border-2 border-slate-300 rounded-xl py-1.5 px-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 focus:outline-none text-sm" />
                       </div>
-                      <div class="flex items-center gap-1.5 flex-1">
-                        <span class="text-slate-600 font-bold text-xs">إلى:</span>
-                        <input 
-                          type="number" 
-                          v-model.number="printRangeTo" 
-                          min="1" 
-                          class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
-                        />
+                      <div class="flex items-center gap-2 flex-1">
+                        <span class="text-slate-700 font-bold text-sm whitespace-nowrap">إلى:</span>
+                        <input type="number" v-model.number="printRangeTo" min="1"
+                          class="w-full text-center font-mono font-bold bg-white border-2 border-slate-300 rounded-xl py-1.5 px-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 focus:outline-none text-sm" />
                       </div>
                     </div>
                   </label>
 
-                  <!-- NEW: Simplified Priority Quota Scope (الأكثر استحقاقاً - الأعلى نقاطاً) -->
-                  <label 
-                    @click="printScope = 'priority_ranked'"
-                    :class="printScope === 'priority_ranked' ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900 ring-1 ring-amber-400' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex flex-col p-2.5 rounded-xl border cursor-pointer transition text-xs gap-2"
-                  >
+                  <!-- Priority Ranked -->
+                  <label @click="printScope = 'priority_ranked'"
+                    :class="printScope === 'priority_ranked' ? 'border-amber-500 bg-amber-50/60 text-slate-900 ring-1 ring-amber-400' : 'border-slate-200 hover:bg-amber-50/30 text-slate-700'"
+                    class="flex flex-col p-3 rounded-xl border-2 cursor-pointer transition gap-2.5">
                     <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <input type="radio" value="priority_ranked" v-model="printScope" class="text-amber-600 focus:ring-amber-500" />
-                        <span class="flex items-center gap-1.5 font-bold text-slate-900">
+                      <div class="flex items-center gap-2.5">
+                        <input type="radio" value="priority_ranked" v-model="printScope"
+                          class="text-amber-600 focus:ring-amber-500 w-4 h-4" />
+                        <span class="flex items-center gap-2 font-black text-sm text-slate-900">
                           <span>🎯</span>
-                          <span>الأكثر استحقاقاً (تنازلياً من أعلى نقطة إلى أدنى نقطة)</span>
+                          <span>الأكثر استحقاقاً (تنازلياً من أعلى نقطة)</span>
                         </span>
                       </div>
-                      <span class="bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px] px-2 py-0.5 rounded-md font-bold">
+                      <span class="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-2.5 py-1 rounded-lg">
                         أولوية الاستفادة
                       </span>
                     </div>
 
-                    <!-- Priority Controls (Visible when active) -->
-                    <div v-if="printScope === 'priority_ranked'" class="flex flex-col gap-2.5 pt-2 px-2 border-t border-amber-200/70" @click.stop>
-                      <!-- Main simple input: عدد المستفيدين الأكثر استحقاقاً -->
-                      <div v-if="!priorityUseBatch" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs">
-                        <div class="flex items-center gap-2">
-                          <span class="text-slate-800 font-bold text-xs whitespace-nowrap">عدد المستفيدين الأكثر استحقاقاً:</span>
-                          <div class="flex items-center gap-1">
-                            <input 
-                              type="number" 
-                              v-model.number="printRankTo" 
-                              min="1" 
+                    <!-- Priority Controls -->
+                    <div v-if="printScope === 'priority_ranked'"
+                      class="flex flex-col gap-3 pt-2 px-2 border-t border-amber-200/70" @click.stop>
+
+                      <!-- Simple mode -->
+                      <div v-if="!priorityUseBatch"
+                        class="flex flex-col gap-2.5 bg-white p-3 rounded-xl border-2 border-amber-200 shadow-xs">
+                        <!-- Row 1: Counter -->
+                        <div class="flex items-center gap-2.5">
+                          <span class="text-slate-800 font-bold text-sm whitespace-nowrap">عدد المستفيدين الأكثر استحقاقاً:</span>
+                          <div class="flex items-center gap-1.5">
+                            <input type="number" v-model.number="printRankTo" min="1"
                               :max="printRankedEligibleTotal || 1"
-                              class="w-20 text-center font-mono font-black text-sm bg-amber-50/40 border border-amber-300 rounded-lg py-1 px-2 focus:ring-2 focus:ring-amber-500 focus:outline-none text-amber-950"
-                            />
-                            <span class="text-slate-500 text-xs font-bold">أول عائلة</span>
+                              class="w-20 text-center font-mono font-black text-base bg-amber-50 border-2 border-amber-300 rounded-xl py-1.5 px-2 focus:ring-2 focus:ring-amber-500 focus:outline-none text-amber-950" />
+                            <span class="text-slate-600 text-sm font-bold">أول عائلة</span>
                           </div>
                         </div>
-
-                        <!-- Quick Presets -->
-                        <div class="flex items-center gap-1 justify-end shrink-0 flex-wrap">
-                          <span class="text-[10px] text-slate-500">اختيار سريع:</span>
-                          <button type="button" @click="setPriorityQuota(5)" :class="printRankTo === 5 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">5</button>
-                          <button type="button" @click="setPriorityQuota(10)" :class="printRankTo === 10 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">10</button>
-                          <button type="button" @click="setPriorityQuota(20)" :class="printRankTo === 20 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">20</button>
-                          <button type="button" @click="setPriorityQuota(50)" :class="printRankTo === 50 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">50</button>
-                          <button type="button" @click="setPriorityQuota(printRankedEligibleTotal)" :class="printRankTo >= printRankedEligibleTotal && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-bold cursor-pointer transition">الكل ({{ printRankedEligibleTotal }})</button>
-                        </div>
-                      </div>
-
-                      <!-- Batch mode (من مستفيد إلى مستفيد) -->
-                      <div v-else class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs">
-                        <div class="flex items-center gap-2 flex-1">
-                          <div class="flex items-center gap-1.5 flex-1">
-                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">من المستفيد رقم:</span>
-                            <input 
-                              type="number" 
-                              v-model.number="printRankFrom" 
-                              min="1" 
-                              :max="printRankedEligibleTotal || 1"
-                              class="w-full text-center font-mono font-bold bg-white border border-amber-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
-                            />
-                          </div>
-                          <div class="flex items-center gap-1.5 flex-1">
-                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">إلى المستفيد رقم:</span>
-                            <input 
-                              type="number" 
-                              v-model.number="printRankTo" 
-                              min="1" 
-                              :max="printRankedEligibleTotal || 1"
-                              class="w-full text-center font-mono font-bold bg-white border border-amber-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
-                            />
-                          </div>
+                        <!-- Row 2: Quick Presets (always wraps within the box) -->
+                        <div class="flex items-center gap-1.5 flex-wrap border-t border-amber-100 pt-2">
+                          <span class="text-xs text-slate-500 font-medium whitespace-nowrap">اختيار سريع:</span>
+                          <button type="button" @click="setPriorityQuota(5)"
+                            :class="printRankTo === 5 && printRankFrom === 1 ? 'bg-amber-600 text-white' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'"
+                            class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono font-bold cursor-pointer transition">5</button>
+                          <button type="button" @click="setPriorityQuota(10)"
+                            :class="printRankTo === 10 && printRankFrom === 1 ? 'bg-amber-600 text-white' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'"
+                            class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono font-bold cursor-pointer transition">10</button>
+                          <button type="button" @click="setPriorityQuota(20)"
+                            :class="printRankTo === 20 && printRankFrom === 1 ? 'bg-amber-600 text-white' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'"
+                            class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono font-bold cursor-pointer transition">20</button>
+                          <button type="button" @click="setPriorityQuota(50)"
+                            :class="printRankTo === 50 && printRankFrom === 1 ? 'bg-amber-600 text-white' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'"
+                            class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono font-bold cursor-pointer transition">50</button>
+                          <button type="button" @click="setPriorityQuota(printRankedEligibleTotal)"
+                            :class="printRankTo >= printRankedEligibleTotal && printRankFrom === 1 ? 'bg-amber-600 text-white' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'"
+                            class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold cursor-pointer transition whitespace-nowrap">الكل ({{ printRankedEligibleTotal }})</button>
                         </div>
                       </div>
 
-                      <!-- Sub-controls: Toggle batch mode + Categories filter -->
-                      <div class="flex items-center justify-between gap-2 flex-wrap text-[11px]">
-                        <!-- Batch toggle button -->
-                        <button 
-                          type="button" 
-                          @click="togglePriorityBatch" 
-                          class="text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 underline cursor-pointer text-[11px]"
-                        >
+                      <!-- Batch mode -->
+                      <div v-else
+                        class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border-2 border-amber-200 shadow-xs">
+                        <div class="flex items-center gap-3 flex-1">
+                          <div class="flex items-center gap-2 flex-1">
+                            <span class="text-slate-700 font-bold text-sm whitespace-nowrap">من المستفيد:</span>
+                            <input type="number" v-model.number="printRankFrom" min="1"
+                              :max="printRankedEligibleTotal || 1"
+                              class="w-full text-center font-mono font-bold bg-white border-2 border-amber-300 rounded-xl py-1.5 px-2 focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm" />
+                          </div>
+                          <div class="flex items-center gap-2 flex-1">
+                            <span class="text-slate-700 font-bold text-sm whitespace-nowrap">إلى المستفيد:</span>
+                            <input type="number" v-model.number="printRankTo" min="1"
+                              :max="printRankedEligibleTotal || 1"
+                              class="w-full text-center font-mono font-bold bg-white border-2 border-amber-300 rounded-xl py-1.5 px-2 focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Sub-controls: Toggle + Categories -->
+                      <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <button type="button" @click="togglePriorityBatch"
+                          class="text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 underline cursor-pointer text-xs">
                           <span>{{ priorityUseBatch ? '↩ العودة للتحديد البسيط (أول X مستفيد)' : '🔢 توزيع على دفعات؟ (من مستفيد إلى مستفيد)' }}</span>
                         </button>
-
-                        <!-- Categories filter -->
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                          <span class="text-slate-500 font-medium text-[10px]">فئات الاستحقاق:</span>
-                          <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" value="critical" v-model="printRankedCategories" class="text-rose-600 focus:ring-rose-500 rounded" />
-                            <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">قصوى</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="text-slate-500 font-medium text-xs">فئات الاستحقاق:</span>
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" value="critical" v-model="printRankedCategories"
+                              class="text-rose-600 focus:ring-rose-500 rounded w-3.5 h-3.5" />
+                            <span class="text-rose-800 font-bold bg-rose-100 px-2 py-0.5 rounded-lg text-xs">قصوى</span>
                           </label>
-                          <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" value="high" v-model="printRankedCategories" class="text-orange-600 focus:ring-orange-500 rounded" />
-                            <span class="text-orange-800 font-bold bg-orange-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية</span>
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" value="high" v-model="printRankedCategories"
+                              class="text-orange-600 focus:ring-orange-500 rounded w-3.5 h-3.5" />
+                            <span class="text-orange-800 font-bold bg-orange-100 px-2 py-0.5 rounded-lg text-xs">ضرورية</span>
                           </label>
-                          <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" value="medium" v-model="printRankedCategories" class="text-amber-600 focus:ring-amber-500 rounded" />
-                            <span class="text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">متوسطة</span>
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" value="medium" v-model="printRankedCategories"
+                              class="text-amber-600 focus:ring-amber-500 rounded w-3.5 h-3.5" />
+                            <span class="text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-lg text-xs">متوسطة</span>
                           </label>
-                          <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" value="low" v-model="printRankedCategories" class="text-emerald-600 focus:ring-emerald-500 rounded" />
-                            <span class="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">ضعيفة</span>
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" value="low" v-model="printRankedCategories"
+                              class="text-emerald-600 focus:ring-emerald-500 rounded w-3.5 h-3.5" />
+                            <span class="text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-lg text-xs">ضعيفة</span>
                           </label>
                         </div>
                       </div>
 
                       <!-- Live Smart Summary Card -->
-                      <div v-if="printTargetBeneficiaries.length > 0" class="bg-amber-100/90 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                      <div v-if="printTargetBeneficiaries.length > 0"
+                        class="bg-amber-100/80 border border-amber-300 rounded-xl p-3 text-sm text-amber-950 flex flex-wrap items-center justify-between gap-2 shadow-xs">
                         <div class="flex items-center gap-2">
-                          <span class="text-base">📋</span>
-                          <span>
-                            سيتم طباعة <strong>{{ printTargetBeneficiaries.length }} عائلة</strong> 
+                          <span class="text-lg">📋</span>
+                          <span class="font-medium">
+                            سيتم طباعة <strong class="font-black">{{ printTargetBeneficiaries.length }} عائلة</strong>
                             ({{ printRankedPreviewStats.topScore }} إلى {{ printRankedPreviewStats.lowScore }} نقطة)
                           </span>
                         </div>
-                        <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                          <span class="text-slate-600 font-bold">🎒 المحافظ المطلوبة لهم:</span>
-                          <span class="font-black text-sm text-amber-900 font-mono">{{ printRankedPreviewStats.totalBags }}</span>
+                        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-amber-300 shadow-xs">
+                          <span class="text-slate-600 font-bold text-xs">🎒 المحافظ المطلوبة:</span>
+                          <span class="font-black text-base text-amber-900 font-mono">{{ printRankedPreviewStats.totalBags }}</span>
                         </div>
                       </div>
                     </div>
                   </label>
 
-                  <!-- Blank Form Option (for School Entry Forms) -->
-                  <label 
-                    v-if="printDocType === 'forms'"
-                    @click="printScope = 'blank'"
-                    :class="printScope === 'blank' ? 'border-teal-500 bg-teal-50/60 font-bold text-slate-900 ring-1 ring-teal-400' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex flex-col p-2 rounded-xl border cursor-pointer transition text-xs gap-1.5"
-                  >
+                  <!-- Blank Form -->
+                  <label v-if="printDocType === 'forms'" @click="printScope = 'blank'"
+                    :class="printScope === 'blank' ? 'border-teal-500 bg-teal-50/60 text-slate-900 ring-1 ring-teal-400' : 'border-slate-200 hover:bg-teal-50/30 text-slate-700'"
+                    class="flex flex-col p-3 rounded-xl border-2 cursor-pointer transition gap-2">
                     <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <input type="radio" value="blank" v-model="printScope" class="text-teal-600 focus:ring-teal-500" />
-                        <span class="flex items-center gap-1.5 font-bold text-teal-950">
+                      <div class="flex items-center gap-2.5">
+                        <input type="radio" value="blank" v-model="printScope"
+                          class="text-teal-600 focus:ring-teal-500 w-4 h-4" />
+                        <span class="flex items-center gap-2 font-black text-sm text-teal-950">
                           <span>📝</span>
                           <span>استمارة فارغة (للملء يدوياً)</span>
                         </span>
                       </div>
-                      <span class="bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">
+                      <span class="bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-lg font-bold text-xs">
                         نموذج يدوي
                       </span>
                     </div>
-
-                    <!-- Copies Counter -->
-                    <div v-if="printScope === 'blank'" class="flex items-center justify-between gap-2 pt-1 px-3 border-t border-teal-200/60 mt-0.5" @click.stop>
-                      <span class="text-slate-700 font-bold text-xs">عدد النسخ:</span>
-                      <div class="flex items-center gap-1.5">
-                        <div class="flex items-center gap-1">
-                          <button 
-                            type="button" 
-                            @click="printBlankCopiesCount = Math.max(1, (Number(printBlankCopiesCount) || 1) - 1)" 
-                            class="w-6 h-6 rounded-md bg-white border border-slate-300 hover:bg-slate-100 flex items-center justify-center font-bold text-slate-700 cursor-pointer text-xs"
-                          >-</button>
-                          <input 
-                            type="number" 
-                            v-model.number="printBlankCopiesCount" 
-                            min="1" 
-                            max="200" 
-                            class="w-14 text-center font-mono font-bold bg-white border border-teal-400 rounded-md py-0.5 px-1 focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs"
-                          />
-                          <button 
-                            type="button" 
-                            @click="printBlankCopiesCount = (Number(printBlankCopiesCount) || 1) + 1" 
-                            class="w-6 h-6 rounded-md bg-white border border-slate-300 hover:bg-slate-100 flex items-center justify-center font-bold text-slate-700 cursor-pointer text-xs"
-                          >+</button>
+                    <div v-if="printScope === 'blank'"
+                      class="flex items-center justify-between gap-2 pt-2 px-4 border-t border-teal-200/60"
+                      @click.stop>
+                      <span class="text-slate-700 font-bold text-sm">عدد النسخ:</span>
+                      <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                          <button type="button"
+                            @click="printBlankCopiesCount = Math.max(1, (Number(printBlankCopiesCount) || 1) - 1)"
+                            class="w-7 h-7 rounded-xl bg-white border-2 border-slate-300 hover:bg-slate-100 flex items-center justify-center font-black text-slate-700 cursor-pointer text-sm">-</button>
+                          <input type="number" v-model.number="printBlankCopiesCount" min="1" max="200"
+                            class="w-16 text-center font-mono font-black bg-white border-2 border-teal-400 rounded-xl py-1 px-2 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm" />
+                          <button type="button"
+                            @click="printBlankCopiesCount = (Number(printBlankCopiesCount) || 1) + 1"
+                            class="w-7 h-7 rounded-xl bg-white border-2 border-slate-300 hover:bg-slate-100 flex items-center justify-center font-black text-slate-700 cursor-pointer text-sm">+</button>
                         </div>
-                        <!-- Quick Presets -->
-                        <div class="flex items-center gap-1 mr-1">
-                          <button type="button" @click="printBlankCopiesCount = 1" class="px-1.5 py-0.5 rounded bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-mono cursor-pointer">1</button>
-                          <button type="button" @click="printBlankCopiesCount = 5" class="px-1.5 py-0.5 rounded bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-mono cursor-pointer">5</button>
-                          <button type="button" @click="printBlankCopiesCount = 10" class="px-1.5 py-0.5 rounded bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-mono cursor-pointer">10</button>
-                          <button type="button" @click="printBlankCopiesCount = 20" class="px-1.5 py-0.5 rounded bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-mono cursor-pointer">20</button>
+                        <div class="flex items-center gap-1.5 mr-1">
+                          <button type="button" @click="printBlankCopiesCount = 1"
+                            class="px-2 py-1 rounded-lg bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold cursor-pointer">1</button>
+                          <button type="button" @click="printBlankCopiesCount = 5"
+                            class="px-2 py-1 rounded-lg bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold cursor-pointer">5</button>
+                          <button type="button" @click="printBlankCopiesCount = 10"
+                            class="px-2 py-1 rounded-lg bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold cursor-pointer">10</button>
+                          <button type="button" @click="printBlankCopiesCount = 20"
+                            class="px-2 py-1 rounded-lg bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold cursor-pointer">20</button>
                         </div>
                       </div>
                     </div>
                   </label>
+
                 </div>
-              </div>
+              </section>
             </div>
 
-            <!-- Left Column (5 cols): Page Orientation & Print Summary Card -->
-            <div class="sm:col-span-5 space-y-3 flex flex-col">
+            <!-- ── Left Column (5 cols): Page Orientation & Print Summary ── -->
+            <div class="lg:col-span-5 space-y-4 flex flex-col">
+
               <!-- 3. Page Orientation -->
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">3. اتجاه الصفحة:</label>
-                <div class="grid grid-cols-2 sm:grid-cols-1 gap-2">
-                  <button 
-                    type="button"
-                    @click="printOrientation = 'landscape'"
-                    :class="printOrientation === 'landscape' ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 text-indigo-950 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'"
-                    class="flex items-center justify-between p-2.5 rounded-xl border text-right transition cursor-pointer"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="text-lg">📑</span>
-                      <div>
-                        <span class="font-bold text-xs block">أفقي (Paysage)</span>
-                        <span class="text-[10px] text-slate-500 font-normal">عرض واسع لعمود الإمضاء</span>
-                      </div>
-                    </div>
-                    <span v-if="printOrientation === 'landscape'" class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+              <section
+                class="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div class="flex items-center gap-2.5 border-b border-slate-200 pb-2.5">
+                  <span class="text-2xl">📐</span>
+                  <div>
+                    <h3 class="font-black text-slate-900 text-base sm:text-lg">3. اتجاه الصفحة</h3>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5">اختر توجيه الورقة عند الطباعة</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <button type="button" @click="printOrientation = 'landscape'"
+                    :class="printOrientation === 'landscape' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/30 text-indigo-950' : 'border-slate-200 hover:border-indigo-300 text-slate-700 bg-white'"
+                    class="flex flex-col items-center p-3.5 rounded-xl border-2 transition cursor-pointer shadow-xs gap-1.5">
+                    <span class="text-2xl">📑</span>
+                    <span class="font-black text-sm">أفقي (Paysage)</span>
+                    <span class="text-xs text-slate-500 font-medium text-center">عرض واسع لعمود الإمضاء</span>
+                    <span v-if="printOrientation === 'landscape'"
+                      class="w-3 h-3 rounded-full bg-indigo-600 mt-1 shadow-xs"></span>
                   </button>
 
-                  <button 
-                    type="button"
-                    @click="printOrientation = 'portrait'"
-                    :class="printOrientation === 'portrait' ? 'border-teal-600 bg-teal-50/80 ring-2 ring-teal-500/20 text-teal-950 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'"
-                    class="flex items-center justify-between p-2.5 rounded-xl border text-right transition cursor-pointer"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="text-lg">📄</span>
-                      <div>
-                        <span class="font-bold text-xs block">عمودي (Portrait)</span>
-                        <span class="text-[10px] text-slate-500 font-normal">الوضع الرأسي للاستمارة</span>
-                      </div>
-                    </div>
-                    <span v-if="printOrientation === 'portrait'" class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                  <button type="button" @click="printOrientation = 'portrait'"
+                    :class="printOrientation === 'portrait' ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-500/30 text-teal-950' : 'border-slate-200 hover:border-teal-300 text-slate-700 bg-white'"
+                    class="flex flex-col items-center p-3.5 rounded-xl border-2 transition cursor-pointer shadow-xs gap-1.5">
+                    <span class="text-2xl">📄</span>
+                    <span class="font-black text-sm">عمودي (Portrait)</span>
+                    <span class="text-xs text-slate-500 font-medium text-center">الوضع الرأسي للاستمارة</span>
+                    <span v-if="printOrientation === 'portrait'"
+                      class="w-3 h-3 rounded-full bg-teal-600 mt-1 shadow-xs"></span>
                   </button>
                 </div>
-              </div>
+              </section>
 
-              <!-- Summary Card (Centered in column) -->
-              <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-xs space-y-2 flex-1 flex flex-col justify-center">
-                <div class="text-[11px] font-bold text-indigo-900 flex items-center gap-1.5 border-b border-indigo-100 pb-1.5">
-                  <span>📊</span>
-                  <span>ملخص أمر الطباعة</span>
+              <!-- Print Summary Card -->
+              <section
+                class="bg-gradient-to-br from-indigo-50/80 to-indigo-100/40 border border-indigo-200 rounded-2xl p-4 space-y-3 shadow-xs flex-1 flex flex-col justify-between">
+                <div class="flex items-center gap-2.5 border-b border-indigo-100 pb-2.5">
+                  <span class="text-2xl">📊</span>
+                  <div>
+                    <h3 class="font-black text-indigo-950 text-base sm:text-lg">ملخص أمر الطباعة</h3>
+                    <p class="text-xs text-indigo-600 font-medium mt-0.5">مراجعة الخيارات قبل الطباعة</p>
+                  </div>
                 </div>
-                <div class="space-y-1.5 text-slate-700">
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-500">نوع المطبوع:</span>
-                    <strong class="text-slate-900 truncate max-w-[130px] text-left">
+                <div class="bg-white rounded-xl p-3.5 border border-indigo-100 shadow-xs space-y-2.5 flex-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium text-sm">نوع المطبوع:</span>
+                    <strong class="text-slate-900 font-black text-sm">
                       {{ printDocType === 'list' ? 'محضر التوزيع' : (printScope === 'blank' ? 'استمارة فارغة' : 'استمارة الدخول') }}
                     </strong>
                   </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-500">النطاق:</span>
-                    <strong class="text-indigo-900 truncate max-w-[140px] text-left text-[11px]">
-                      {{ 
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium text-sm">النطاق:</span>
+                    <strong class="text-indigo-900 font-black text-sm">
+                      {{
                         printScope === 'all' ? 'جميع المسجلين' :
                         printScope === 'selected' ? `محدد (${selectedBeneficiaryIds.length})` :
                         printScope === 'range' ? `أرقام (${printRangeFrom}-${printRangeTo})` :
@@ -2715,204 +2805,285 @@
                       }}
                     </strong>
                   </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-500">الاتجاه:</span>
-                    <strong class="text-indigo-700 font-bold">{{ printOrientation === 'landscape' ? 'أفقي (Paysage)' : 'عمودي (Portrait)' }}</strong>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500 font-medium text-sm">الاتجاه:</span>
+                    <strong class="text-indigo-700 font-black text-sm">{{ printOrientation === 'landscape' ? 'أفقي (Paysage)' : 'عمودي (Portrait)' }}</strong>
                   </div>
-                  <div class="flex items-center justify-between pt-1.5 border-t border-indigo-100">
-                    <span class="text-slate-700 font-bold text-xs">إجمالي العدد:</span>
-                    <span class="bg-indigo-600 text-white font-black px-2.5 py-0.5 rounded-md font-mono text-xs shadow-2xs">
+                  <div class="flex items-center justify-between pt-2.5 border-t border-indigo-100">
+                    <span class="text-slate-700 font-black text-sm">إجمالي العدد:</span>
+                    <span class="bg-indigo-600 text-white font-black px-3.5 py-1 rounded-xl font-mono text-sm shadow-xs">
                       {{ printTargetBeneficiaries.length }} {{ printDocType === 'forms' ? 'استمارة' : 'مستفيد' }}
                     </span>
                   </div>
                 </div>
-              </div>
+              </section>
+
             </div>
           </div>
         </div>
 
-        <!-- Footer Actions (Fixed at bottom) -->
-        <div class="flex items-center justify-between gap-3 px-5 py-3 sm:px-6 border-t border-slate-100 bg-slate-50/80 shrink-0">
-          <div class="text-[11px] text-slate-500 font-medium hidden sm:flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>جاهز للطباعة بدقة وتنسيق رسمي</span>
-          </div>
-          <div class="flex items-center gap-2 mr-auto sm:mr-0">
-            <button 
-              type="button" 
-              @click="showPrintCustomModal = false" 
-              class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
-            >
+        <!-- ══ Modal Footer ══ -->
+        <div
+          class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600 shrink-0">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="font-medium">جاهز للطباعة بدقة وتنسيق رسمي</span>
+          </span>
+          <div class="flex items-center gap-3">
+            <button type="button" @click="showPrintCustomModal = false"
+              class="px-5 py-2.5 text-sm font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200 rounded-xl transition cursor-pointer">
               إلغاء
             </button>
-            <button 
-              type="button" 
-              @click="executeCustomPrint" 
+            <button type="button" @click="executeCustomPrint"
               :disabled="printTargetBeneficiaries.length === 0"
-              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg transition cursor-pointer active:scale-95"
-            >
-              <span>🖨️</span>
+              class="flex items-center gap-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition cursor-pointer active:scale-95">
+              <span class="text-lg">🖨️</span>
               <span>بدء الطباعة الآن ({{ printTargetBeneficiaries.length }})</span>
             </button>
           </div>
         </div>
+
       </div>
     </div>
-
     <!-- =========================================== -->
     <!-- Detailed Statistics & Analytics Modal (عريض كبير) -->
     <!-- =========================================== -->
     <div v-if="showStatsDetailsModal"
-      class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto no-print">
-      <div class="bg-white rounded-2xl w-full max-w-4xl lg:max-w-5xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] m-auto overflow-hidden" dir="rtl">
-        
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-3.5 bg-linear-to-r from-indigo-50/70 via-slate-50 to-white shrink-0">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-xs">
-              📊
-            </div>
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto no-print animate-fade-in">
+      <div class="bg-white rounded-3xl w-[98vw] max-w-7xl shadow-2xl border border-slate-200 flex flex-col h-[94vh] m-auto overflow-hidden" dir="rtl">
+
+        <!-- ══ Modal Header ══ -->
+        <div class="px-6 py-4.5 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0 border-b border-indigo-900/50">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shadow-inner border border-white/15">📊</div>
             <div>
-              <h2 class="text-lg font-black text-slate-900">لوحة الإحصائيات والتحليل الشامل</h2>
-              <p class="text-xs text-slate-500 mt-0.5">
-                الموسم الدراسي: <strong class="text-indigo-700 font-bold">{{ activeCampaignLabel }}</strong> • مؤشرات دقيقة وتوزيع المستفيدين والحقائب المدرسية
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide">لوحة الإحصائيات والتحليل الشامل</h2>
+              <p class="text-xs sm:text-sm text-indigo-200 font-medium mt-0.5">
+                الموسم الدراسي: <strong class="text-white font-black">{{ activeCampaignLabel }}</strong> — مؤشرات دقيقة وتوزيع المستفيدين والحقائب المدرسية
               </p>
             </div>
           </div>
-          <button 
+          <button
             @click="closeStatsDetailsModal"
-            class="text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 w-8 h-8 rounded-lg flex items-center justify-center transition text-lg font-bold cursor-pointer"
-            title="إغلاق النافذة"
-          >✕</button>
+            class="text-white/70 hover:text-white hover:bg-white/15 rounded-xl p-2 transition cursor-pointer"
+            title="إغلاق النافذة">
+            <span class="text-2xl leading-none font-bold">✕</span>
+          </button>
         </div>
 
         <!-- Modal Body (Scrollable, clean dashboard layout) -->
-        <div class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+        <div class="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
           
           <!-- Row 1: 4 Key Metric Highlight Cards -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Card 1: Total Families -->
-            <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3.5 text-right relative overflow-hidden shadow-2xs">
-              <span class="text-xs font-semibold text-slate-500 block">إجمالي الأسر المسجلة</span>
-              <div class="text-2xl font-black text-slate-900 font-mono mt-1">{{ stats.total_families }}</div>
-              <span class="text-[11px] text-slate-400">عائلة مسجلة بالموسم</span>
-              <span class="absolute -bottom-2 -left-2 text-4xl opacity-10 pointer-events-none select-none">👨‍👩‍👧‍👦</span>
+            <div class="bg-slate-50/90 border border-slate-200 rounded-2xl p-4 sm:p-5 text-right relative overflow-hidden shadow-xs">
+              <span class="text-xs sm:text-sm font-bold text-slate-500 block">إجمالي الأسر المسجلة</span>
+              <div class="text-3xl sm:text-4xl font-black text-slate-900 font-mono mt-1">{{ stats.total_families }}</div>
+              <span class="text-xs sm:text-sm text-slate-400 font-medium mt-0.5 block">عائلة مسجلة بالموسم</span>
+              <span class="absolute -bottom-2 -left-2 text-5xl opacity-10 pointer-events-none select-none">👨‍👩‍👧‍👦</span>
             </div>
 
             <!-- Card 2: Total Bags -->
-            <div class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3.5 text-right relative overflow-hidden shadow-2xs">
-              <span class="text-xs font-bold text-indigo-700 block">مجموع المحافظ المطلوبة</span>
-              <div class="text-2xl font-black text-indigo-950 font-mono mt-1">{{ stats.total_bags }}</div>
-              <span class="text-[11px] text-indigo-600">محفظة مدرسية مطلوبة</span>
-              <span class="absolute -bottom-2 -left-2 text-4xl opacity-10 pointer-events-none select-none">🎒</span>
+            <div class="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-right relative overflow-hidden shadow-xs">
+              <span class="text-xs sm:text-sm font-bold text-indigo-700 block">مجموع المحافظ المطلوبة</span>
+              <div class="text-3xl sm:text-4xl font-black text-indigo-950 font-mono mt-1">{{ stats.total_bags }}</div>
+              <span class="text-xs sm:text-sm text-indigo-600 font-medium mt-0.5 block">محفظة مدرسية مطلوبة</span>
+              <span class="absolute -bottom-2 -left-2 text-5xl opacity-10 pointer-events-none select-none">🎒</span>
             </div>
 
             <!-- Card 3: Delivered Bags -->
-            <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 text-right relative overflow-hidden shadow-2xs">
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 sm:p-5 text-right relative overflow-hidden shadow-xs">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-emerald-800">المحافظ المسلّمة</span>
-                <span class="text-[10px] font-black bg-emerald-200/80 text-emerald-900 px-1.5 py-0.2 rounded-full font-mono">
+                <span class="text-xs sm:text-sm font-bold text-emerald-800">المحافظ المسلّمة</span>
+                <span class="text-xs font-black bg-emerald-200/90 text-emerald-900 px-2 py-0.5 rounded-full font-mono">
                   {{ stats.progress_percentage || 0 }}%
                 </span>
               </div>
-              <div class="text-2xl font-black text-emerald-950 font-mono mt-1">{{ stats.delivered_bags || 0 }}</div>
-              <span class="text-[11px] text-emerald-700">{{ stats.delivered_families || 0 }} عائلة استلمت</span>
-              <span class="absolute -bottom-2 -left-2 text-4xl opacity-10 pointer-events-none select-none">✓</span>
+              <div class="text-3xl sm:text-4xl font-black text-emerald-950 font-mono mt-1">{{ stats.delivered_bags || 0 }}</div>
+              <span class="text-xs sm:text-sm text-emerald-700 font-medium mt-0.5 block">{{ stats.delivered_families || 0 }} عائلة استلمت</span>
+              <span class="absolute -bottom-2 -left-2 text-5xl opacity-10 pointer-events-none select-none">✓</span>
             </div>
 
             <!-- Card 4: Pending Bags -->
-            <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3.5 text-right relative overflow-hidden shadow-2xs">
+            <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 text-right relative overflow-hidden shadow-xs">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-amber-800">في انتظار التسليم</span>
-                <span class="text-[10px] font-black bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded-full font-mono">
+                <span class="text-xs sm:text-sm font-bold text-amber-800">في انتظار التسليم</span>
+                <span class="text-xs font-black bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full font-mono">
                   {{ 100 - (stats.progress_percentage || 0) }}%
                 </span>
               </div>
-              <div class="text-2xl font-black text-amber-950 font-mono mt-1">{{ stats.pending_bags || 0 }}</div>
-              <span class="text-[11px] text-amber-700">{{ stats.pending_families || 0 }} عائلة بالانتظار</span>
-              <span class="absolute -bottom-2 -left-2 text-4xl opacity-10 pointer-events-none select-none">⏳</span>
+              <div class="text-3xl sm:text-4xl font-black text-amber-950 font-mono mt-1">{{ stats.pending_bags || 0 }}</div>
+              <span class="text-xs sm:text-sm text-amber-700 font-medium mt-0.5 block">{{ stats.pending_families || 0 }} عائلة بالانتظار</span>
+              <span class="absolute -bottom-2 -left-2 text-5xl opacity-10 pointer-events-none select-none">⏳</span>
+            </div>
+          </div>
+
+          <!-- Row: Priority & Eligibility Breakdown (توزيع المستفيدين والمحافظ حسب درجة الأولوية) -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">⭐</span>
+                <div>
+                  <h3 class="text-base sm:text-lg font-black text-slate-800">توزيع المستفيدين والمحافظ حسب درجة الأولوية والاستحقاق</h3>
+                  <p class="text-xs sm:text-sm text-slate-500 font-medium">مؤشر استراتيجي دقيق لترشيد التوزيع وتوجيه الحقائب للأسر الأكثر احتياجاً أولاً</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-600 flex-wrap">
+                <span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                  إجمالي الأسر: <strong class="text-slate-950 font-mono font-black">{{ stats.total_families }}</strong>
+                </span>
+                <span class="bg-indigo-50 text-indigo-900 px-3 py-1 rounded-lg border border-indigo-200 shadow-2xs">
+                  إجمالي الحقائب: <strong class="text-indigo-950 font-mono font-black">{{ stats.total_bags }}</strong>
+                </span>
+              </div>
+            </div>
+
+            <!-- 4 Priority Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div 
+                v-for="cat in priorityStats" 
+                :key="cat.key"
+                class="border rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 transition-all hover:shadow-md"
+                :class="[cat.bgClass, cat.borderClass]"
+              >
+                <!-- Card Header -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm sm:text-base font-black flex items-center gap-2" :class="cat.textClass">
+                      <span class="w-3 h-3 rounded-full shadow-xs" :class="cat.dotClass"></span>
+                      <span>{{ cat.label }}</span>
+                    </span>
+                    <span class="text-xs font-mono font-black px-2.5 py-0.5 rounded-lg border shadow-2xs" :class="cat.badgeClass">
+                      {{ cat.familiesPercentage }}% من الأسر
+                    </span>
+                  </div>
+
+                  <!-- Families count -->
+                  <div class="text-xs sm:text-sm font-bold text-slate-600 flex items-center justify-between mt-1">
+                    <span>عدد الأسر المستحقة:</span>
+                    <span class="font-mono text-sm sm:text-base font-black text-slate-900">{{ cat.familiesCount }} أسرة</span>
+                  </div>
+                </div>
+
+                <!-- Bag Numbers Box -->
+                <div class="bg-white/90 rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs space-y-2">
+                  <div class="flex items-baseline justify-between">
+                    <span class="text-xs sm:text-sm font-bold text-slate-700">مجموع الحقائب المطلوبة:</span>
+                    <span class="text-2xl font-black font-mono" :class="cat.textClass">{{ cat.bagsCount }}</span>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-100 text-center text-xs">
+                    <div class="bg-emerald-50/80 border border-emerald-200 rounded-lg py-1.5 px-2">
+                      <span class="text-[11px] text-emerald-700 font-bold block">مسلّمة</span>
+                      <span class="text-sm font-black text-emerald-950 font-mono">{{ cat.deliveredBags }}</span>
+                    </div>
+                    <div class="bg-amber-50/80 border border-amber-200 rounded-lg py-1.5 px-2">
+                      <span class="text-[11px] text-amber-700 font-bold block">متبقية</span>
+                      <span class="text-sm font-black text-amber-950 font-mono">{{ cat.pendingBags }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fulfillment Progress Bar -->
+                <div>
+                  <div class="flex items-center justify-between text-xs font-bold mb-1.5">
+                    <span class="text-slate-500">نسبة تغطية الفئة:</span>
+                    <span class="font-mono text-xs sm:text-sm font-black" :class="cat.fulfillmentRate === 100 ? 'text-emerald-700' : 'text-slate-800'">
+                      {{ cat.fulfillmentRate }}%
+                    </span>
+                  </div>
+                  <div class="w-full bg-slate-200/80 rounded-full h-3 overflow-hidden shadow-inner p-0.5">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500 shadow-xs" 
+                      :class="cat.barClass" 
+                      :style="{ width: `${cat.fulfillmentRate}%` }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Row 2: Educational Stages Breakdown (ابتدائي، متوسط، ثانوي) -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🏫</span>
-                <h3 class="text-sm font-black text-slate-800">توزيع المحافظ المدرسية حسب الأطوار التعليمية</h3>
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">🏫</span>
+                <h3 class="text-base sm:text-lg font-black text-slate-800">توزيع المحافظ المدرسية حسب الأطوار التعليمية</h3>
               </div>
-              <span class="text-xs text-slate-400 font-medium">من إجمالي {{ stats.total_bags }} محفظة</span>
+              <span class="text-xs sm:text-sm text-slate-500 font-bold">من إجمالي {{ stats.total_bags }} محفظة</span>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <!-- Primary -->
-              <div class="bg-emerald-50/40 border border-emerald-200/80 rounded-xl p-3.5 flex flex-col justify-between gap-2">
+              <div class="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-sm font-black text-emerald-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
                     <span>الطور الابتدائي</span>
                   </span>
-                  <span class="text-xs font-extrabold text-emerald-900 font-mono bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                  <span class="text-xs sm:text-sm font-black text-emerald-900 font-mono bg-emerald-200/80 px-2.5 py-0.5 rounded-lg">
                     {{ primaryPercentage }}%
                   </span>
                 </div>
                 <div class="flex items-baseline justify-between mt-1">
-                  <span class="text-2xl font-black text-emerald-950 font-mono">{{ stats.primary_total }}</span>
+                  <span class="text-3xl font-black text-emerald-950 font-mono">{{ stats.primary_total }}</span>
                   <div class="text-left flex flex-col items-end">
-                    <span class="text-xs text-emerald-700">محفظة</span>
-                    <span class="text-[10px] font-bold text-emerald-800 bg-emerald-200/50 px-1.5 py-0.5 rounded mt-1 border border-emerald-200/50">مسلمة: {{ stats.primary_delivered }}</span>
+                    <span class="text-xs font-bold text-emerald-700">محفظة مطلوبة</span>
+                    <span class="text-xs font-bold text-emerald-800 bg-emerald-200/60 px-2 py-0.5 rounded-md mt-1 border border-emerald-300/60">مسلمة: {{ stats.primary_delivered }}</span>
                   </div>
                 </div>
                 <!-- Progress Bar -->
-                <div class="w-full h-2 bg-emerald-100 rounded-full overflow-hidden mt-1">
+                <div class="w-full h-3 bg-emerald-100 rounded-full overflow-hidden mt-1">
                   <div class="h-full bg-emerald-500 rounded-full transition-all duration-500" :style="{ width: `${primaryPercentage}%` }"></div>
                 </div>
               </div>
 
               <!-- Middle -->
-              <div class="bg-amber-50/40 border border-amber-200/80 rounded-xl p-3.5 flex flex-col justify-between gap-2">
+              <div class="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                  <span class="text-sm font-black text-amber-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-amber-500"></span>
                     <span>الطور المتوسط</span>
                   </span>
-                  <span class="text-xs font-extrabold text-amber-900 font-mono bg-amber-100/80 px-2 py-0.5 rounded-md">
+                  <span class="text-xs sm:text-sm font-black text-amber-900 font-mono bg-amber-200/80 px-2.5 py-0.5 rounded-lg">
                     {{ middlePercentage }}%
                   </span>
                 </div>
                 <div class="flex items-baseline justify-between mt-1">
-                  <span class="text-2xl font-black text-amber-950 font-mono">{{ stats.middle_total }}</span>
+                  <span class="text-3xl font-black text-amber-950 font-mono">{{ stats.middle_total }}</span>
                   <div class="text-left flex flex-col items-end">
-                    <span class="text-xs text-amber-700">محفظة</span>
-                    <span class="text-[10px] font-bold text-amber-800 bg-amber-200/50 px-1.5 py-0.5 rounded mt-1 border border-amber-200/50">مسلمة: {{ stats.middle_delivered }}</span>
+                    <span class="text-xs font-bold text-amber-700">محفظة مطلوبة</span>
+                    <span class="text-xs font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-md mt-1 border border-amber-300/60">مسلمة: {{ stats.middle_delivered }}</span>
                   </div>
                 </div>
                 <!-- Progress Bar -->
-                <div class="w-full h-2 bg-amber-100 rounded-full overflow-hidden mt-1">
+                <div class="w-full h-3 bg-amber-100 rounded-full overflow-hidden mt-1">
                   <div class="h-full bg-amber-500 rounded-full transition-all duration-500" :style="{ width: `${middlePercentage}%` }"></div>
                 </div>
               </div>
 
               <!-- Secondary -->
-              <div class="bg-sky-50/40 border border-sky-200/80 rounded-xl p-3.5 flex flex-col justify-between gap-2">
+              <div class="bg-sky-50/50 border border-sky-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-sky-800 flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                  <span class="text-sm font-black text-sky-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-sky-500"></span>
                     <span>الطور الثانوي</span>
                   </span>
-                  <span class="text-xs font-extrabold text-sky-900 font-mono bg-sky-100/80 px-2 py-0.5 rounded-md">
+                  <span class="text-xs sm:text-sm font-black text-sky-900 font-mono bg-sky-200/80 px-2.5 py-0.5 rounded-lg">
                     {{ secondaryPercentage }}%
                   </span>
                 </div>
                 <div class="flex items-baseline justify-between mt-1">
-                  <span class="text-2xl font-black text-sky-950 font-mono">{{ stats.secondary_total }}</span>
+                  <span class="text-3xl font-black text-sky-950 font-mono">{{ stats.secondary_total }}</span>
                   <div class="text-left flex flex-col items-end">
-                    <span class="text-xs text-sky-700">محفظة</span>
-                    <span class="text-[10px] font-bold text-sky-800 bg-sky-200/50 px-1.5 py-0.5 rounded mt-1 border border-sky-200/50">مسلمة: {{ stats.secondary_delivered }}</span>
+                    <span class="text-xs font-bold text-sky-700">محفظة مطلوبة</span>
+                    <span class="text-xs font-bold text-sky-800 bg-sky-200/60 px-2 py-0.5 rounded-md mt-1 border border-sky-300/60">مسلمة: {{ stats.secondary_delivered }}</span>
                   </div>
                 </div>
                 <!-- Progress Bar -->
-                <div class="w-full h-2 bg-sky-100 rounded-full overflow-hidden mt-1">
+                <div class="w-full h-3 bg-sky-100 rounded-full overflow-hidden mt-1">
                   <div class="h-full bg-sky-500 rounded-full transition-all duration-500" :style="{ width: `${secondaryPercentage}%` }"></div>
                 </div>
               </div>
@@ -2920,78 +3091,78 @@
           </div>
 
           <!-- Row 3: Field Handover Progress Track & Detailed Comparison -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="text-base">📦</span>
-                <h3 class="text-sm font-black text-slate-800">متابعة عملية التسليم والتوزيع الميداني</h3>
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">📦</span>
+                <h3 class="text-base sm:text-lg font-black text-slate-800">متابعة عملية التسليم والتوزيع الميداني</h3>
               </div>
               <span 
-                class="text-xs font-bold px-2.5 py-0.5 rounded-full"
-                :class="stats.progress_percentage === 100 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'"
+                class="text-xs sm:text-sm font-black px-3.5 py-1 rounded-full shadow-xs"
+                :class="stats.progress_percentage === 100 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'"
               >
-                {{ stats.progress_percentage || 0 }}% مكتمل
+                {{ stats.progress_percentage || 0 }}% منجز
               </span>
             </div>
 
             <!-- Big Progress Bar -->
-            <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/80 mb-3">
+            <div class="w-full h-4.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200 mb-4 shadow-inner">
               <div 
-                class="h-full rounded-full transition-all duration-500 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 shadow-xs"
+                class="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 shadow-sm"
                 :style="{ width: `${stats.progress_percentage || 0}%` }"
               ></div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div class="bg-emerald-50/50 border border-emerald-200/70 rounded-xl p-3 flex items-center justify-between">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span class="font-bold text-emerald-900 block">المحافظ والأسر المستلمة</span>
-                  <span class="text-[11px] text-emerald-700">{{ stats.delivered_families || 0 }} عائلة استلمت محافظها</span>
+                  <span class="font-black text-emerald-950 text-sm sm:text-base block">المحافظ والأسر المستلمة</span>
+                  <span class="text-xs sm:text-sm text-emerald-700 font-medium mt-0.5 block">{{ stats.delivered_families || 0 }} عائلة استلمت محافظها بنجاح</span>
                 </div>
                 <div class="text-left">
-                  <span class="text-xl font-black text-emerald-900 font-mono">{{ stats.delivered_bags || 0 }}</span>
-                  <span class="text-[10px] text-emerald-600 block">محفظة مسلّمة</span>
+                  <span class="text-2xl sm:text-3xl font-black text-emerald-900 font-mono">{{ stats.delivered_bags || 0 }}</span>
+                  <span class="text-xs font-bold text-emerald-600 block">محفظة مسلّمة</span>
                 </div>
               </div>
 
-              <div class="bg-amber-50/50 border border-amber-200/70 rounded-xl p-3 flex items-center justify-between">
+              <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span class="font-bold text-amber-900 block">المحافظ والأسر في الانتظار</span>
-                  <span class="text-[11px] text-amber-700">{{ stats.pending_families || 0 }} عائلة بانتظار الاستلام</span>
+                  <span class="font-black text-amber-950 text-sm sm:text-base block">المحافظ والأسر في الانتظار</span>
+                  <span class="text-xs sm:text-sm text-amber-700 font-medium mt-0.5 block">{{ stats.pending_families || 0 }} عائلة بانتظار الاستلام</span>
                 </div>
                 <div class="text-left">
-                  <span class="text-xl font-black text-amber-900 font-mono">{{ stats.pending_bags || 0 }}</span>
-                  <span class="text-[10px] text-amber-600 block">محفظة متبقية</span>
+                  <span class="text-2xl sm:text-3xl font-black text-amber-900 font-mono">{{ stats.pending_bags || 0 }}</span>
+                  <span class="text-xs font-bold text-amber-600 block">محفظة متبقية</span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Row 4: Social Status Breakdown (توزيع الحالات الاجتماعية) -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🏷️</span>
-                <h3 class="text-sm font-black text-slate-800">توزيع المستفيدين والمحافظ حسب الحالة الاجتماعية</h3>
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">🏷️</span>
+                <h3 class="text-base sm:text-lg font-black text-slate-800">توزيع المستفيدين والمحافظ حسب الحالة الاجتماعية</h3>
               </div>
-              <span class="text-xs text-slate-400 font-medium">{{ socialStatusStats.length }} فئات مسجلة</span>
+              <span class="text-xs sm:text-sm text-slate-500 font-bold">{{ socialStatusStats.length }} فئات مسجلة</span>
             </div>
 
             <div v-if="socialStatusStats.length > 0" class="overflow-x-auto">
-              <table class="w-full text-right text-xs">
-                <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+              <table class="w-full text-right text-sm">
+                <thead class="bg-slate-50 text-slate-700 font-black border-b border-slate-200">
                   <tr>
-                    <th class="py-2.5 px-3">الحالة الاجتماعية</th>
-                    <th class="py-2.5 px-3 text-center">عدد الأسر</th>
-                    <th class="py-2.5 px-3 text-center">النسبة من الأسر</th>
-                    <th class="py-2.5 px-3 text-center">مجموع الحقائب</th>
-                    <th class="py-2.5 px-3">التوزيع البياني</th>
+                    <th class="py-3 px-4">الحالة الاجتماعية</th>
+                    <th class="py-3 px-4 text-center">عدد الأسر</th>
+                    <th class="py-3 px-4 text-center">النسبة من الأسر</th>
+                    <th class="py-3 px-4 text-center">مجموع الحقائب</th>
+                    <th class="py-3 px-4">التوزيع البياني</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                  <tr v-for="st in socialStatusStats" :key="st.status" class="hover:bg-slate-50/80 transition">
-                    <td class="py-2.5 px-3 font-bold text-slate-800">
-                      <span class="px-2.5 py-1 rounded-full text-[11px] font-medium" :class="{
+                  <tr v-for="st in socialStatusStats" :key="st.status" class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 font-bold text-slate-800">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold shadow-2xs" :class="{
                         'bg-red-50 text-red-700 border border-red-200': st.status === 'بدون دخل',
                         'bg-orange-50 text-orange-700 border border-orange-200': st.status === 'ضعيف الدخل',
                         'bg-blue-50 text-blue-700 border border-blue-200': st.status === 'متقاعد',
@@ -3002,11 +3173,11 @@
                         {{ st.status }}
                       </span>
                     </td>
-                    <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-700">{{ st.familiesCount }}</td>
-                    <td class="py-2.5 px-3 text-center font-mono font-bold text-indigo-700">{{ st.percentage }}%</td>
-                    <td class="py-2.5 px-3 text-center font-mono font-black text-indigo-900">{{ st.bagsCount }}</td>
-                    <td class="py-2.5 px-3">
-                      <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <td class="py-3 px-4 text-center font-mono font-bold text-slate-800">{{ st.familiesCount }}</td>
+                    <td class="py-3 px-4 text-center font-mono font-black text-indigo-700">{{ st.percentage }}%</td>
+                    <td class="py-3 px-4 text-center font-mono font-black text-indigo-950">{{ st.bagsCount }}</td>
+                    <td class="py-3 px-4">
+                      <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
                         <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" :style="{ width: `${st.percentage}%` }"></div>
                       </div>
                     </td>
@@ -3014,45 +3185,45 @@
                 </tbody>
               </table>
             </div>
-            <div v-else class="text-center py-6 text-slate-400 text-xs">
+            <div v-else class="text-center py-8 text-slate-400 text-sm font-medium">
               لا توجد بيانات مسجلة في هذا الموسم حالياً.
             </div>
           </div>
 
           <!-- Row 5: Education Level Stats (توزيع الأطفال حسب السنة الدراسية) -->
-          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-slate-100 pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🏫</span>
-                <h3 class="text-sm font-black text-slate-800">توزيع الأطفال المتمدرسين حسب السنة الدراسية</h3>
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">🏫</span>
+                <h3 class="text-base sm:text-lg font-black text-slate-800">توزيع الأطفال المتمدرسين حسب السنة الدراسية</h3>
               </div>
-              <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-mono font-bold">
-                <span class="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+              <div class="flex items-center gap-2 flex-wrap text-xs sm:text-sm font-mono font-bold">
+                <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
                   <span>✓ مسلّم:</span>
-                  <span>{{ educationLevelStore.totalDeliveredInStats }}</span>
+                  <span class="font-black">{{ educationLevelStore.totalDeliveredInStats }}</span>
                 </span>
-                <span class="bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
                   <span>⏳ انتظار:</span>
-                  <span>{{ educationLevelStore.totalPendingInStats }}</span>
+                  <span class="font-black">{{ educationLevelStore.totalPendingInStats }}</span>
                 </span>
-                <span class="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                <span class="bg-slate-100 text-slate-800 border border-slate-200 px-3.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
                   <span>المجموع:</span>
-                  <span>{{ educationLevelStore.totalChildrenInStats }} طفل</span>
+                  <span class="font-black">{{ educationLevelStore.totalChildrenInStats }} طفل</span>
                 </span>
               </div>
             </div>
 
             <div v-if="educationLevelStats.length > 0">
-              <div v-for="stageKey in educationLevelStore.orderedStages" :key="stageKey" class="mb-3.5 last:mb-0">
-                <div v-if="educationLevelStore.statsGroupedByStage[stageKey]" class="bg-slate-50/60 rounded-xl p-3 border border-slate-200/70">
+              <div v-for="stageKey in educationLevelStore.orderedStages" :key="stageKey" class="mb-5 last:mb-0">
+                <div v-if="educationLevelStore.statsGroupedByStage[stageKey]" class="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200">
                   <!-- Stage Header with Delivered, Pending, and Total -->
-                  <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                    <span class="text-xs font-black flex items-center gap-1.5" :class="{
+                  <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                    <span class="text-sm sm:text-base font-black flex items-center gap-2" :class="{
                       'text-emerald-900': stageKey === 'ابتدائي',
                       'text-amber-900': stageKey === 'متوسط',
                       'text-sky-900': stageKey === 'ثانوي'
                     }">
-                      <span class="w-2.5 h-2.5 rounded-full" :class="{
+                      <span class="w-3 h-3 rounded-full" :class="{
                         'bg-emerald-500': stageKey === 'ابتدائي',
                         'bg-amber-500': stageKey === 'متوسط',
                         'bg-sky-500': stageKey === 'ثانوي'
@@ -3060,14 +3231,14 @@
                       <span>الطور {{ stageKey }}</span>
                     </span>
 
-                    <div class="flex items-center gap-1.5 font-mono text-[10px] font-bold">
-                      <span class="bg-emerald-100/80 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    <div class="flex items-center gap-2 font-mono text-xs font-bold">
+                      <span class="bg-emerald-100/90 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-lg">
                         مسلّم: {{ educationLevelStore.statsGroupedByStage[stageKey].delivered }}
                       </span>
-                      <span class="bg-amber-100/80 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full">
+                      <span class="bg-amber-100/90 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg">
                         انتظار: {{ educationLevelStore.statsGroupedByStage[stageKey].pending }}
                       </span>
-                      <span class="px-2.5 py-0.5 rounded-full border shadow-2xs" :class="{
+                      <span class="px-3 py-1 rounded-lg border shadow-xs" :class="{
                         'bg-emerald-600 text-white border-emerald-700': stageKey === 'ابتدائي',
                         'bg-amber-600 text-white border-amber-700': stageKey === 'متوسط',
                         'bg-sky-600 text-white border-sky-700': stageKey === 'ثانوي'
@@ -3078,48 +3249,48 @@
                   </div>
 
                   <!-- Levels Grid -->
-                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                     <div v-for="level in educationLevelStore.statsGroupedByStage[stageKey].levels" :key="level.id"
-                      class="bg-white border rounded-xl p-2.5 flex flex-col justify-between transition-all hover:shadow-xs" :class="{
-                        'border-emerald-200/90 hover:border-emerald-300': stageKey === 'ابتدائي',
-                        'border-amber-200/90 hover:border-amber-300': stageKey === 'متوسط',
-                        'border-sky-200/90 hover:border-sky-300': stageKey === 'ثانوي'
+                      class="bg-white border rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between transition-all hover:shadow-md" :class="{
+                        'border-emerald-200 hover:border-emerald-400': stageKey === 'ابتدائي',
+                        'border-amber-200 hover:border-amber-400': stageKey === 'متوسط',
+                        'border-sky-200 hover:border-sky-400': stageKey === 'ثانوي'
                       }">
                       <!-- Year Name & Total Badge -->
-                      <div class="flex items-center justify-between gap-1 mb-2 pb-1.5 border-b border-slate-100">
-                        <span class="text-[11px] font-bold text-slate-700 truncate" :title="level.year_name">
+                      <div class="flex items-center justify-between gap-1 mb-2.5 pb-2 border-b border-slate-100">
+                        <span class="text-xs sm:text-sm font-bold text-slate-800 truncate" :title="level.year_name">
                           {{ level.year_name }}
                         </span>
-                        <span class="text-xs font-black font-mono px-1.5 py-0.2 rounded" :class="{
-                          'bg-emerald-50 text-emerald-800 border border-emerald-200/60': stageKey === 'ابتدائي',
-                          'bg-amber-50 text-amber-800 border border-amber-200/60': stageKey === 'متوسط',
-                          'bg-sky-50 text-sky-800 border border-sky-200/60': stageKey === 'ثانوي'
+                        <span class="text-xs sm:text-sm font-black font-mono px-2 py-0.5 rounded-md" :class="{
+                          'bg-emerald-50 text-emerald-800 border border-emerald-200': stageKey === 'ابتدائي',
+                          'bg-amber-50 text-amber-800 border border-amber-200': stageKey === 'متوسط',
+                          'bg-sky-50 text-sky-800 border border-sky-200': stageKey === 'ثانوي'
                         }">
                           {{ level.children_count }}
                         </span>
                       </div>
 
                       <!-- Sub-boxes: Delivered vs Pending -->
-                      <div class="grid grid-cols-2 gap-1.5 text-center">
+                      <div class="grid grid-cols-2 gap-2 text-center">
                         <!-- Delivered (مسلم) -->
-                        <div class="bg-emerald-50/70 border border-emerald-200/60 rounded-lg py-1 px-1 flex flex-col items-center">
-                          <span class="text-[9px] text-emerald-700 font-bold leading-tight">مسلّم</span>
-                          <span class="text-xs font-black text-emerald-800 font-mono leading-tight mt-0.5">
+                        <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl py-1.5 px-1 flex flex-col items-center">
+                          <span class="text-[10px] text-emerald-700 font-bold leading-tight">مسلّم</span>
+                          <span class="text-sm font-black text-emerald-900 font-mono leading-tight mt-0.5">
                             {{ level.delivered_count || 0 }}
                           </span>
                         </div>
 
                         <!-- Pending (في الانتظار) -->
-                        <div class="bg-amber-50/70 border border-amber-200/60 rounded-lg py-1 px-1 flex flex-col items-center">
-                          <span class="text-[9px] text-amber-700 font-bold leading-tight">انتظار</span>
-                          <span class="text-xs font-black text-amber-800 font-mono leading-tight mt-0.5">
+                        <div class="bg-amber-50/80 border border-amber-200 rounded-xl py-1.5 px-1 flex flex-col items-center">
+                          <span class="text-[10px] text-amber-700 font-bold leading-tight">انتظار</span>
+                          <span class="text-sm font-black text-amber-900 font-mono leading-tight mt-0.5">
                             {{ level.pending_count || 0 }}
                           </span>
                         </div>
                       </div>
 
                       <!-- Delivery Progress Mini-bar -->
-                      <div class="w-full bg-slate-100 rounded-full h-1 mt-2 overflow-hidden" :title="`${level.children_count > 0 ? Math.round(((level.delivered_count || 0) / level.children_count) * 100) : 0}% تم التسليم`">
+                      <div class="w-full bg-slate-100 rounded-full h-2 mt-2.5 overflow-hidden shadow-inner" :title="`${level.children_count > 0 ? Math.round(((level.delivered_count || 0) / level.children_count) * 100) : 0}% تم التسليم`">
                         <div 
                           class="h-full rounded-full transition-all duration-300"
                           :class="{
@@ -3135,7 +3306,7 @@
                 </div>
               </div>
             </div>
-            <div v-else class="text-center py-6 text-slate-400 text-xs">
+            <div v-else class="text-center py-8 text-slate-400 text-sm font-medium">
               لا توجد بيانات أطفال متمدرسين مسجلة في هذا الموسم حالياً.
             </div>
           </div>
@@ -3143,15 +3314,15 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 shrink-0">
-          <div class="text-[11px] text-slate-500 font-medium">
+        <div class="flex items-center justify-between px-6 sm:px-8 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
+          <div class="text-xs sm:text-sm text-slate-500 font-semibold">
             بيانات رقمية وتحليلية دقيقة ومحدثة لحظياً
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
             <button 
               type="button" 
               @click="openCustomPrintModal('list'); closeStatsDetailsModal()" 
-              class="flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-xs font-bold px-4 py-2 rounded-xl shadow-2xs transition cursor-pointer"
+              class="flex items-center gap-2 bg-white border border-slate-300 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-sm font-bold px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
             >
               <span>🖨️</span>
               <span>طباعة تقرير ومحضر</span>
@@ -3159,7 +3330,7 @@
             <button 
               type="button" 
               @click="closeStatsDetailsModal" 
-              class="px-5 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-xl shadow-2xs transition cursor-pointer"
+              class="px-7 py-2.5 text-sm font-black text-white bg-slate-800 hover:bg-slate-900 rounded-xl shadow-xs transition cursor-pointer"
             >
               إغلاق
             </button>
@@ -3170,12 +3341,19 @@
     </div>
   </div>
 
-  <!-- Dedicated 1:1 Avatar Cropper & Compressor Modal -->
+  <!-- Dedicated 3:4 Portrait Avatar Cropper & Compressor Modal -->
   <AvatarCropModal
     v-if="showCropperModal"
     :image-url="cropperSourceImage"
     @cropped="handleAvatarCropped"
     @close="showCropperModal = false"
+  />
+
+  <!-- Encrypted Backup, Restore & Factory Reset Modal -->
+  <BackupManagerModal
+    v-if="showBackupModal"
+    @close="showBackupModal = false"
+    @restored="handleDataRestored"
   />
 </template>
 
@@ -3193,6 +3371,27 @@ import { useEducationLevelStore } from './stores/educationLevels';
 import ImportModal from './components/ImportModal.vue';
 import SchoolFormPrint from './components/SchoolFormPrint.vue';
 import AvatarCropModal from './components/AvatarCropModal.vue';
+import BackupManagerModal from './components/BackupManagerModal.vue';
+
+// Backup & Security modal state
+const showBackupModal = ref(false);
+const openBackupModal = () => {
+  showBackupModal.value = true;
+};
+const handleDataRestored = async () => {
+  await Promise.all([
+    statusStore.loadSocialStatuses(),
+    orgStore.loadOrgSettings(),
+    campaignStore.loadCampaigns(),
+    educationLevelStore.fetchAll(),
+  ]);
+  if (selectedCampaignId.value) {
+    await Promise.all([
+      beneficiaryStore.fetchData(selectedCampaignId.value),
+      educationLevelStore.fetchStats(selectedCampaignId.value),
+    ]);
+  }
+};
 import {
   confirmDelete,
   notifySuccess,
@@ -3577,6 +3776,131 @@ const rankedEligibleBeneficiaries = computed(() => {
     const numB = b.record_no !== null && b.record_no !== undefined ? Number(b.record_no) : (b.id || 0);
     return numA - numB;
   });
+});
+
+
+// Priority Breakdown Statistics for Stats Modal
+const priorityStats = computed(() => {
+  const list = beneficiaries.value || [];
+  const totalBagsAll = stats.value?.total_bags || 0;
+  const totalFamiliesAll = list.length || 0;
+
+  const categories = [
+    {
+      key: 'critical',
+      label: 'أولوية قصوى',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
+      dotClass: 'bg-rose-500',
+      barClass: 'bg-rose-500',
+      borderClass: 'border-rose-200/90 hover:border-rose-400',
+      bgClass: 'bg-rose-50/50',
+      textClass: 'text-rose-950',
+      subTextClass: 'text-rose-700',
+      familiesCount: 0,
+      bagsCount: 0,
+      deliveredBags: 0,
+      pendingBags: 0,
+      deliveredFamilies: 0,
+      pendingFamilies: 0,
+      familiesPercentage: 0,
+      bagsPercentage: 0,
+      fulfillmentRate: 0,
+    },
+    {
+      key: 'high',
+      label: 'أولوية ضرورية',
+      badgeClass: 'bg-orange-100 text-orange-800 border-orange-300',
+      dotClass: 'bg-orange-500',
+      barClass: 'bg-orange-500',
+      borderClass: 'border-orange-200/90 hover:border-orange-400',
+      bgClass: 'bg-orange-50/50',
+      textClass: 'text-orange-950',
+      subTextClass: 'text-orange-700',
+      familiesCount: 0,
+      bagsCount: 0,
+      deliveredBags: 0,
+      pendingBags: 0,
+      deliveredFamilies: 0,
+      pendingFamilies: 0,
+      familiesPercentage: 0,
+      bagsPercentage: 0,
+      fulfillmentRate: 0,
+    },
+    {
+      key: 'medium',
+      label: 'أولوية متوسطة',
+      badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+      dotClass: 'bg-amber-500',
+      barClass: 'bg-amber-500',
+      borderClass: 'border-amber-200/90 hover:border-amber-400',
+      bgClass: 'bg-amber-50/50',
+      textClass: 'text-amber-950',
+      subTextClass: 'text-amber-700',
+      familiesCount: 0,
+      bagsCount: 0,
+      deliveredBags: 0,
+      pendingBags: 0,
+      deliveredFamilies: 0,
+      pendingFamilies: 0,
+      familiesPercentage: 0,
+      bagsPercentage: 0,
+      fulfillmentRate: 0,
+    },
+    {
+      key: 'low',
+      label: 'أولوية ضعيفة',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      dotClass: 'bg-emerald-500',
+      barClass: 'bg-emerald-500',
+      borderClass: 'border-emerald-200/90 hover:border-emerald-400',
+      bgClass: 'bg-emerald-50/50',
+      textClass: 'text-emerald-950',
+      subTextClass: 'text-emerald-700',
+      familiesCount: 0,
+      bagsCount: 0,
+      deliveredBags: 0,
+      pendingBags: 0,
+      deliveredFamilies: 0,
+      pendingFamilies: 0,
+      familiesPercentage: 0,
+      bagsPercentage: 0,
+      fulfillmentRate: 0,
+    },
+  ];
+
+  const map = {
+    critical: categories[0],
+    high: categories[1],
+    medium: categories[2],
+    low: categories[3],
+  };
+
+  list.forEach(b => {
+    const score = getPriorityScore(b);
+    const catKey = getPriorityCategory(score);
+    const cat = map[catKey] || map.low;
+
+    const bags = (Number(b.primary_count) || 0) + (Number(b.middle_count) || 0) + (Number(b.secondary_count) || 0);
+    const isDelivered = Boolean(b.is_delivered);
+
+    cat.familiesCount += 1;
+    cat.bagsCount += bags;
+    if (isDelivered) {
+      cat.deliveredFamilies += 1;
+      cat.deliveredBags += bags;
+    } else {
+      cat.pendingFamilies += 1;
+      cat.pendingBags += bags;
+    }
+  });
+
+  categories.forEach(c => {
+    c.familiesPercentage = totalFamiliesAll > 0 ? Math.round((c.familiesCount / totalFamiliesAll) * 100) : 0;
+    c.bagsPercentage = totalBagsAll > 0 ? Math.round((c.bagsCount / totalBagsAll) * 100) : 0;
+    c.fulfillmentRate = c.bagsCount > 0 ? Math.round((c.deliveredBags / c.bagsCount) * 100) : 0;
+  });
+
+  return categories;
 });
 
 const printRankedEligibleTotal = computed(() => rankedEligibleBeneficiaries.value.length);
