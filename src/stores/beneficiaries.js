@@ -42,6 +42,8 @@ export const useBeneficiaryStore = defineStore('beneficiaries', {
       spouse_name: '',
       monthly_income: '',
       children_count: null,
+      extra_priority_points: 0,
+      photo_path: '',
       children: [],
     },
     isLoading: false,
@@ -125,6 +127,8 @@ export const useBeneficiaryStore = defineStore('beneficiaries', {
           spouse_name: record.spouse_name || '',
           monthly_income: record.monthly_income || '',
           children_count: record.children_count ?? null,
+          extra_priority_points: record.extra_priority_points ?? 0,
+          photo_path: record.photo_path || '',
           children: [],
         };
         
@@ -159,6 +163,8 @@ export const useBeneficiaryStore = defineStore('beneficiaries', {
           spouse_name: '',
           monthly_income: '',
           children_count: null,
+          extra_priority_points: 0,
+          photo_path: '',
           children: [],
         };
       }

@@ -606,6 +606,7 @@
 
               <th class="py-2.5 px-3">الهاتف</th>
               <th class="py-2.5 px-3">الحالة الإجتماعية</th>
+              <th class="py-2.5 px-3">الأولوية</th>
               <th class="py-2.5 px-3 text-center col-primary">ابتدائي</th>
               <th class="py-2.5 px-3 text-center col-middle">متوسط</th>
               <th class="py-2.5 px-3 text-center col-secondary">ثانوي</th>
@@ -640,7 +641,15 @@
               </td>
               <td class="py-2 px-3 text-center font-mono font-bold text-indigo-700 text-xs">{{ item.record_no || (index +
                 1) }}</td>
-              <td class="py-2 px-4 font-bold text-slate-800">{{ item.guardian_name }}</td>
+              <td class="py-2 px-4 font-bold text-slate-800">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-xs text-slate-400 font-bold shadow-2xs">
+                    <img v-if="item.photo_path && avatarCache[item.photo_path]" :src="avatarCache[item.photo_path]" alt="" class="w-full h-full object-cover" />
+                    <span v-else>👤</span>
+                  </div>
+                  <span>{{ item.guardian_name }}</span>
+                </div>
+              </td>
               <td class="py-2 px-3 text-slate-500 font-mono text-xs" dir="ltr">{{ item.phone || '-' }}</td>
               <td class="py-2 px-3">
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-medium inline-block" :class="{
@@ -652,6 +661,17 @@
                 }">
                   {{ item.social_status }}
                 </span>
+              </td>
+              <td class="py-2 px-3">
+                <div class="flex items-center gap-1">
+                  <span v-if="getPriorityCategory(getPriorityScore(item)) === 'critical'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضرورية جداً</span>
+                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'high'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضرورية</span>
+                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'medium'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">متوسطة</span>
+                  <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضعيفة</span>
+                  <span v-if="Number(item.extra_priority_points) > 0" class="text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold font-mono" :title="`نقاط استثنائية إضافية: +${item.extra_priority_points}`">
+                    +{{ item.extra_priority_points }}⭐
+                  </span>
+                </div>
               </td>
               <td class="py-2 px-3 text-center font-bold text-emerald-700 col-primary">{{ item.primary_count }}</td>
               <td class="py-2 px-3 text-center font-bold text-amber-700 col-middle">{{ item.middle_count }}</td>
@@ -892,6 +912,91 @@
             <button type="button" @click="rolloverApplied = false" class="text-slate-400 hover:text-slate-600 text-xs">✕</button>
           </div>
 
+          <!-- Avatar Profile Card (Lightweight 1:1 Personal Photo & Scanner) -->
+          <div 
+            class="bg-gradient-to-r from-slate-50 via-indigo-50/20 to-slate-50 border border-slate-200/90 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-xs transition-all"
+            @dragover.prevent="isAvatarDragging = true"
+            @dragleave.prevent="isAvatarDragging = false"
+            @drop.prevent="handleAvatarDrop"
+            :class="{ 'ring-2 ring-indigo-500 bg-indigo-50/40 border-indigo-300': isAvatarDragging }"
+          >
+            <!-- Left: Rounded Avatar Frame with Hover Overlay -->
+            <div class="flex items-center gap-3.5 w-full sm:w-auto">
+              <div 
+                @click="triggerAvatarFileInput"
+                class="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-300 hover:border-indigo-500 bg-white shadow-xs cursor-pointer shrink-0 transition-all active:scale-95 flex items-center justify-center select-none"
+                title="انقر لاختيار صورة، أو اسحب صورة وأفلتها هنا، أو الصقها بـ Ctrl+V"
+              >
+                <!-- Avatar image preview if available -->
+                <img 
+                  v-if="avatarPreviewUrl" 
+                  :src="avatarPreviewUrl" 
+                  alt="صورة المستفيد" 
+                  class="w-full h-full object-cover" 
+                />
+                <!-- Fallback Icon placeholder -->
+                <div v-else class="flex flex-col items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors">
+                  <span class="text-3xl leading-none">👤</span>
+                  <span class="text-[10px] font-bold text-slate-500 mt-1">إضافة صورة</span>
+                </div>
+
+                <!-- Hover overlay -->
+                <div class="absolute inset-0 bg-slate-900/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-bold gap-0.5 backdrop-blur-[1px]">
+                  <span>📷</span>
+                  <span>{{ avatarPreviewUrl ? 'تغيير' : 'رفع' }}</span>
+                </div>
+              </div>
+
+              <!-- Hidden native file input -->
+              <input 
+                ref="avatarFileInput" 
+                type="file" 
+                accept="image/*" 
+                class="hidden" 
+                @change="handleAvatarFileSelect" 
+              />
+
+              <!-- Description & Shortcut Hint -->
+              <div class="flex-1 text-right">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-black text-slate-800">الصورة الشخصية لولي الأمر</span>
+                  <span class="text-[10px] bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded font-bold">1:1 مربعة</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  انقر للإدراج، أو اسحب الصورة هنا، أو الصقها بـ 
+                  <kbd class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded font-mono font-bold text-[10px] border border-slate-300">Ctrl + V</kbd>
+                </p>
+                <div v-if="form.photo_path" class="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
+                  <span>✓</span> <span>تم إرفاق صورة شخصية معتمدة</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Action Buttons (Scanner Launcher & Remove) -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0 flex-wrap">
+              <button 
+                type="button" 
+                @click="triggerScanner" 
+                class="px-3 py-1.5 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 hover:border-indigo-300 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                title="تشغيل الماسح الضوئي لنظام ويندوز أو البرنامج الملحق"
+              >
+                <span>🖨️</span>
+                <span>تشغيل الماسح الضوئي (Scan)</span>
+              </button>
+
+              <button 
+                v-if="avatarPreviewUrl || form.photo_path" 
+                type="button" 
+                @click="clearAvatar" 
+                class="px-2.5 py-1.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl shadow-2xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                title="إزالة الصورة"
+              >
+                <span>🗑️</span>
+                <span>حذف</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Primary Core Fields -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div class="sm:col-span-1">
@@ -942,6 +1047,66 @@
                 <label class="block text-xs font-semibold text-slate-600 mb-1 text-center">ثانوي</label>
                 <input v-model.number="form.secondary_count" type="number" min="0"
                   class="w-full text-center text-sm font-bold border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Exceptional / Extra Priority Points Section -->
+          <div class="bg-linear-to-r from-amber-50/70 via-orange-50/40 to-slate-50 border border-amber-200/80 rounded-xl p-3">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+              <div class="flex-1">
+                <label class="block text-xs font-bold text-amber-900 mb-0.5 flex items-center gap-1.5">
+                  <span class="text-sm">⭐</span>
+                  <span>نقاط إضافية / استثنائية (للحالات الخاصة)</span>
+                </label>
+                <p class="text-[11px] text-slate-500 leading-relaxed">
+                  تضاف مباشرة إلى نقاط الحالة الاجتماعية والأولاد لترقية تصنيف العائلة المستحقة استثنائياً.
+                </p>
+              </div>
+
+              <!-- Input and Live Preview Badge -->
+              <div class="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                <div class="flex items-center gap-1.5 bg-white border border-amber-300 rounded-lg p-1.5 shadow-2xs">
+                  <span class="text-xs font-bold text-slate-500 mr-1">+</span>
+                  <input 
+                    v-model.number="form.extra_priority_points" 
+                    type="number" 
+                    min="0"
+                    max="200"
+                    placeholder="0"
+                    class="w-16 text-center font-mono font-bold text-sm text-amber-900 focus:outline-none"
+                  />
+                  <span class="text-[11px] font-bold text-amber-700 ml-1">نقطة</span>
+                </div>
+
+                <!-- Live Computed Priority Preview -->
+                <div class="flex flex-col items-center">
+                  <span class="text-[9px] text-slate-400 font-bold mb-0.5">الأولوية المحسوبة:</span>
+                  <span 
+                    v-if="getPriorityCategory(getPriorityScore(form)) === 'critical'" 
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
+                  >
+                    ضرورية جداً ({{ getPriorityScore(form) }}ن)
+                  </span>
+                  <span 
+                    v-else-if="getPriorityCategory(getPriorityScore(form)) === 'high'" 
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 shadow-2xs"
+                  >
+                    ضرورية ({{ getPriorityScore(form) }}ن)
+                  </span>
+                  <span 
+                    v-else-if="getPriorityCategory(getPriorityScore(form)) === 'medium'" 
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs"
+                  >
+                    متوسطة ({{ getPriorityScore(form) }}ن)
+                  </span>
+                  <span 
+                    v-else 
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs"
+                  >
+                    ضعيفة ({{ getPriorityScore(form) }}ن)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1427,6 +1592,27 @@
             <textarea v-model="settingsForm.footer_text" rows="2"
               class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
           </div>
+
+          <!-- Priority Points Settings -->
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block text-xs font-bold text-indigo-700 mb-1 flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>نقاط الأولوية لكل تلميذ متمدرس (ابتدائي، متوسط، ثانوي)</span>
+            </label>
+            <div class="flex items-center gap-3">
+              <input 
+                v-model.number="settingsForm.student_priority_points" 
+                type="number" 
+                min="0"
+                max="100"
+                placeholder="5"
+                class="w-28 text-sm font-bold font-mono text-center border border-indigo-200 bg-indigo-50/30 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+              />
+              <span class="text-xs text-slate-500">
+                نقاط تضاف لكل ابن متمدرس في معادلة الأولوية (القيمة الافتراضية: 5 نقاط).
+              </span>
+            </div>
+          </div>
         </div>
         <div class="flex justify-end gap-2 mt-6">
           <button @click="showSettingsModal = false"
@@ -1455,13 +1641,19 @@
         </div>
 
         <!-- Add New Status Form -->
-        <form @submit.prevent="addSocialStatus" class="flex gap-2 mb-4">
-          <input v-model="newStatusName" type="text" placeholder="اسم الحالة الاجتماعية الجديدة (مثال: أرملة، أيتام...)"
+        <form @submit.prevent="addSocialStatus" class="flex items-center gap-2 mb-4">
+          <input v-model="newStatusName" type="text" placeholder="اسم الحالة الاجتماعية (أرملة، أيتام...)"
             class="flex-1 text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             required />
+          <div class="flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" title="نقاط الأولوية لهذه الحالة">
+            <span class="text-xs text-slate-500 font-bold">النقاط:</span>
+            <input v-model.number="newStatusPoints" type="number" min="0" max="100" placeholder="20"
+              class="w-16 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-md p-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required />
+          </div>
           <button type="submit"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition shadow-xs flex items-center gap-1 shrink-0">
-            + إضافة حالة
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition shadow-xs flex items-center gap-1 shrink-0 cursor-pointer">
+            + إضافة
           </button>
         </form>
 
@@ -1478,6 +1670,7 @@
             <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
               <tr>
                 <th class="py-2.5 px-3">الحالة الاجتماعية</th>
+                <th class="py-2.5 px-3 text-center">نقاط الأولوية</th>
                 <th class="py-2.5 px-3 text-center">المستفيدين المرتبطين</th>
                 <th class="py-2.5 px-3 text-center">إجراءات</th>
               </tr>
@@ -1489,12 +1682,18 @@
                     <input v-model="editingStatusName" type="text"
                       class="text-xs border border-indigo-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       @keyup.enter="saveEditStatus(item)" @keyup.esc="cancelEditStatus" />
-                    <button @click="saveEditStatus(item)" class="text-emerald-600 hover:text-emerald-700 px-1 font-bold"
-                      title="حفظ">✓</button>
-                    <button @click="cancelEditStatus" class="text-slate-400 hover:text-slate-600 px-1 font-bold"
-                      title="إلغاء">✕</button>
                   </div>
                   <span v-else>{{ item.name }}</span>
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                  <div v-if="editingStatusId === item.id" class="inline-flex items-center justify-center">
+                    <input v-model.number="editingStatusPoints" type="number" min="0" max="100"
+                      class="w-16 text-center text-xs font-mono font-bold border border-indigo-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      @keyup.enter="saveEditStatus(item)" @keyup.esc="cancelEditStatus" />
+                  </div>
+                  <span v-else class="font-mono font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                    {{ item.base_points ?? 20 }} نقطة
+                  </span>
                 </td>
                 <td class="py-2.5 px-3 text-center">
                   <span
@@ -1504,15 +1703,21 @@
                   </span>
                 </td>
                 <td class="py-2.5 px-3 text-center">
-                  <div class="flex items-center justify-center gap-1.5" v-if="editingStatusId !== item.id">
+                  <div class="flex items-center justify-center gap-1.5" v-if="editingStatusId === item.id">
+                    <button @click="saveEditStatus(item)" class="text-emerald-600 hover:text-emerald-700 px-1 font-bold cursor-pointer"
+                      title="حفظ التعديلات">✓</button>
+                    <button @click="cancelEditStatus" class="text-slate-400 hover:text-slate-600 px-1 font-bold cursor-pointer"
+                      title="إلغاء">✕</button>
+                  </div>
+                  <div class="flex items-center justify-center gap-1.5" v-else>
                     <button @click="startEditStatus(item)"
-                      class="text-slate-500 hover:text-indigo-600 p-1 hover:bg-slate-100 rounded transition"
-                      title="تعديل التسمية">
+                      class="text-slate-500 hover:text-indigo-600 p-1 hover:bg-slate-100 rounded transition cursor-pointer"
+                      title="تعديل التسمية والنقاط">
                       ✏️
                     </button>
                     <button @click="deleteSocialStatus(item)" :disabled="item.count > 0"
                       :title="item.count > 0 ? 'محمية من الحذف: مرتبطة بـ ' + item.count + ' مستفيد' : 'حذف الحالة'"
-                      :class="item.count > 0 ? 'opacity-30 cursor-not-allowed text-slate-400' : 'text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition'">
+                      :class="item.count > 0 ? 'opacity-30 cursor-not-allowed text-slate-400' : 'text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition cursor-pointer'">
                       🗑️
                     </button>
                   </div>
@@ -1935,6 +2140,63 @@
                           min="1" 
                           class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
                         />
+                      </div>
+                    </div>
+                  </label>
+
+                  <!-- Priority Range -->
+                  <label 
+                    @click="printScope = 'priority'"
+                    :class="printScope === 'priority' ? 'border-indigo-400 bg-indigo-50/40 font-bold text-slate-900' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
+                    class="flex flex-col p-2 rounded-xl border cursor-pointer transition text-xs gap-1.5"
+                  >
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <input type="radio" value="priority" v-model="printScope" class="text-indigo-600 focus:ring-indigo-500" />
+                        <span>حسب الأولوية + نطاق أرقام</span>
+                      </div>
+                      <span class="text-indigo-600 text-[10px] font-mono">نقاط الأولوية</span>
+                    </div>
+
+                    <!-- Priority & Range Inputs -->
+                    <div v-if="printScope === 'priority'" class="flex flex-col gap-2 pt-1 px-3" @click.stop>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <label class="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" value="critical" v-model="printSelectedPriorities" class="text-rose-600 focus:ring-rose-500" />
+                          <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية جداً</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" value="high" v-model="printSelectedPriorities" class="text-orange-600 focus:ring-orange-500" />
+                          <span class="text-orange-800 font-bold bg-orange-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" value="medium" v-model="printSelectedPriorities" class="text-amber-600 focus:ring-amber-500" />
+                          <span class="text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">متوسطة</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" value="low" v-model="printSelectedPriorities" class="text-emerald-600 focus:ring-emerald-500" />
+                          <span class="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">ضعيفة</span>
+                        </label>
+                      </div>
+                      <div class="flex items-center gap-2 mt-1">
+                        <div class="flex items-center gap-1.5 flex-1">
+                          <span class="text-slate-600 font-bold text-xs">من:</span>
+                          <input 
+                            type="number" 
+                            v-model.number="printRangeFrom" 
+                            min="1" 
+                            class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
+                          />
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-1">
+                          <span class="text-slate-600 font-bold text-xs">إلى:</span>
+                          <input 
+                            type="number" 
+                            v-model.number="printRangeTo" 
+                            min="1" 
+                            class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
                   </label>
@@ -2503,12 +2765,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Dedicated 1:1 Avatar Cropper & Compressor Modal -->
+  <AvatarCropModal
+    v-if="showCropperModal"
+    :image-url="cropperSourceImage"
+    @cropped="handleAvatarCropped"
+    @close="showCropperModal = false"
+  />
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import { safeInvoke } from './stores/tauri';
 import { useCampaignStore } from './stores/campaigns';
 import { useSocialStatusStore } from './stores/socialStatuses';
@@ -2517,6 +2788,7 @@ import { useBeneficiaryStore } from './stores/beneficiaries';
 import { useEducationLevelStore } from './stores/educationLevels';
 import ImportModal from './components/ImportModal.vue';
 import SchoolFormPrint from './components/SchoolFormPrint.vue';
+import AvatarCropModal from './components/AvatarCropModal.vue';
 import {
   confirmDelete,
   notifySuccess,
@@ -2549,7 +2821,7 @@ const editingEduName = ref('');
 
 // Reactive store properties via storeToRefs
 const { campaigns, selectedCampaignId, showCampaignModal, newCampaignYear, rolloverPrevious, activeCampaignLabel } = storeToRefs(campaignStore);
-const { socialStatuses, showStatusModal, newStatusName, editingStatusId, editingStatusName, statusError } = storeToRefs(statusStore);
+const { socialStatuses, showStatusModal, newStatusName, newStatusPoints, editingStatusId, editingStatusName, editingStatusPoints, statusError } = storeToRefs(statusStore);
 const { orgSettings, showSettingsModal, settingsForm } = storeToRefs(orgStore);
 const { beneficiaries, stats, searchQuery, selectedStatus, deliveryFilter, showModal, form, isLoading } = storeToRefs(beneficiaryStore);
 
@@ -2750,9 +3022,10 @@ const selectedBeneficiaryIds = ref([]);
 // ==========================================
 const showPrintCustomModal = ref(false);
 const printDocType = ref('list'); // 'list' | 'forms'
-const printScope = ref('all'); // 'all' | 'selected' | 'range' | 'single' | 'blank'
+const printScope = ref('all'); // 'all' | 'selected' | 'range' | 'single' | 'blank' | 'priority'
 const printRangeFrom = ref(1);
 const printRangeTo = ref(100);
+const printSelectedPriorities = ref(['critical', 'high']); // default selection
 const printBlankCopiesCount = ref(1);
 const singlePrintBeneficiary = ref(null);
 const printOrientation = ref('landscape'); // 'landscape' | 'portrait'
@@ -2780,6 +3053,22 @@ watch(printDocType, (newVal) => {
 
 const fullBeneficiariesForPrint = ref([]);
 
+const getPriorityScore = (b) => {
+  const status = socialStatuses.value.find(s => s.name === b.social_status);
+  const basePoints = status && status.base_points !== undefined ? Number(status.base_points) : 20;
+  const ptsPerStudent = Number(orgSettings.value?.student_priority_points) || 5;
+  const totalStudents = (Number(b.primary_count) || 0) + (Number(b.middle_count) || 0) + (Number(b.secondary_count) || 0);
+  const extraPoints = Number(b.extra_priority_points) || 0;
+  return basePoints + (totalStudents * ptsPerStudent) + extraPoints;
+};
+
+const getPriorityCategory = (score) => {
+  if (score >= 60) return 'critical';
+  if (score >= 45) return 'high';
+  if (score >= 30) return 'medium';
+  return 'low';
+};
+
 const printTargetBeneficiaries = computed(() => {
   if (printDocType.value === 'forms' && printScope.value === 'blank') {
     const count = Math.max(Number(printBlankCopiesCount.value) || 1, 1);
@@ -2793,7 +3082,7 @@ const printTargetBeneficiaries = computed(() => {
     return sortedBeneficiaries.value.filter(b => set.has(b.id));
   }
   
-  // Use full, unfiltered beneficiaries for 'range' and 'all'
+  // Use full, unfiltered beneficiaries for 'range', 'priority' and 'all'
   let targetList = fullBeneficiariesForPrint.value.length > 0 
     ? fullBeneficiariesForPrint.value 
     : sortedBeneficiaries.value;
@@ -2805,16 +3094,26 @@ const printTargetBeneficiaries = computed(() => {
     return numA - numB;
   });
 
-  if (printScope.value === 'range') {
+  if (printScope.value === 'range' || printScope.value === 'priority') {
     const from = Number(printRangeFrom.value) || 1;
     const to = Number(printRangeTo.value) || 1;
     const min = Math.min(from, to);
     const max = Math.max(from, to);
+    
     return targetList.filter((b, idx) => {
       const recNo = b.record_no !== null && b.record_no !== undefined ? Number(b.record_no) : (idx + 1);
-      return recNo >= min && recNo <= max;
+      const inRange = recNo >= min && recNo <= max;
+      
+      if (printScope.value === 'priority') {
+        const score = getPriorityScore(b);
+        const category = getPriorityCategory(score);
+        return inRange && printSelectedPriorities.value.includes(category);
+      }
+      
+      return inRange;
     });
   }
+  
   // 'all'
   return targetList;
 });
@@ -3361,12 +3660,169 @@ const applyRolloverMatch = () => {
   form.value.primary_count = m.primary_count || 0;
   form.value.middle_count = m.middle_count || 0;
   form.value.secondary_count = m.secondary_count || 0;
+  if (m.photo_path) {
+    form.value.photo_path = m.photo_path;
+    loadAvatarPreview(m.photo_path);
+  } else {
+    form.value.photo_path = '';
+    avatarPreviewUrl.value = '';
+  }
 
   showOptionalFields.value = true;
   rolloverApplied.value = true;
   matchResult.value = { match_type: 'none', message: '', matched_record: null, previous_campaign_year: null };
   toastSuccess('تم ترحيل واستيراد بيانات المستفيد من الموسم السابق بنجاح');
 };
+
+// Avatar & Scanner Reactive State
+const avatarFileInput = ref(null);
+const avatarPreviewUrl = ref('');
+const showCropperModal = ref(false);
+const cropperSourceImage = ref('');
+const isAvatarDragging = ref(false);
+const avatarCache = ref({});
+
+const triggerAvatarFileInput = () => {
+  avatarFileInput.value?.click();
+};
+
+const handleAvatarFileSelect = (event) => {
+  const file = event.target?.files?.[0];
+  if (file) {
+    processRawAvatarFile(file);
+  }
+  if (event.target) event.target.value = '';
+};
+
+const handleAvatarDrop = (event) => {
+  isAvatarDragging.value = false;
+  const file = event.dataTransfer?.files?.[0];
+  if (file && file.type && file.type.startsWith('image/')) {
+    processRawAvatarFile(file);
+  }
+};
+
+const handleGlobalPaste = (event) => {
+  if (!beneficiaryStore.showModal || showCropperModal.value) return;
+  const items = event.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        event.preventDefault();
+        processRawAvatarFile(file);
+        break;
+      }
+    }
+  }
+};
+
+const processRawAvatarFile = (file) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    cropperSourceImage.value = e.target.result;
+    showCropperModal.value = true;
+  };
+  reader.readAsDataURL(file);
+};
+
+const handleAvatarCropped = async (croppedDataUrl) => {
+  try {
+    const relativePath = await safeInvoke('save_avatar_file', {
+      base64Image: croppedDataUrl,
+    });
+    form.value.photo_path = relativePath;
+    avatarPreviewUrl.value = croppedDataUrl;
+    if (relativePath) {
+      avatarCache.value[relativePath] = croppedDataUrl;
+    }
+    toastSuccess('تم ضبط وحفظ الصورة الشخصية بنجاح');
+  } catch (err) {
+    notifyError('فشل حفظ الصورة', err.message || err);
+  }
+};
+
+const loadAvatarPreview = async (photoPath) => {
+  if (!photoPath) {
+    avatarPreviewUrl.value = '';
+    return;
+  }
+  if (avatarCache.value[photoPath]) {
+    avatarPreviewUrl.value = avatarCache.value[photoPath];
+    return;
+  }
+  try {
+    const dataUrl = await safeInvoke('load_avatar_file', { filename: photoPath });
+    avatarPreviewUrl.value = dataUrl;
+    avatarCache.value[photoPath] = dataUrl;
+  } catch (err) {
+    avatarPreviewUrl.value = '';
+  }
+};
+
+const cacheAvatar = async (photoPath) => {
+  if (!photoPath || avatarCache.value[photoPath]) return;
+  try {
+    const data = await safeInvoke('load_avatar_file', { filename: photoPath });
+    avatarCache.value[photoPath] = data;
+  } catch (e) {
+    // Ignore error silently
+  }
+};
+
+const clearAvatar = async () => {
+  const confirm = await Swal.fire({
+    title: 'حذف الصورة الشخصية؟',
+    text: 'هل أنت متأكد من رغبتك في إزالة صورة المستفيد؟',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'نعم، احذف',
+    cancelButtonText: 'إلغاء',
+    confirmButtonColor: '#e11d48',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true,
+  });
+  if (confirm.isConfirmed) {
+    if (form.value.photo_path) {
+      safeInvoke('delete_avatar_file', { filename: form.value.photo_path }).catch(() => {});
+    }
+    form.value.photo_path = '';
+    avatarPreviewUrl.value = '';
+    toastSuccess('تمت إزالة الصورة بنجاح');
+  }
+};
+
+const triggerScanner = async () => {
+  try {
+    await safeInvoke('open_scanner_app');
+    Swal.fire({
+      toast: true,
+      position: 'top',
+      icon: 'info',
+      title: 'تم فتح الماسح الضوئي',
+      text: 'انسخ الصورة بعد مسحها، ثم الصقها هنا مباشرة بـ Ctrl + V',
+      showConfirmButton: false,
+      timer: 5000,
+      timerProgressBar: true,
+    });
+  } catch (err) {
+    notifyError('تعذر فتح الماسح الضوئي', err.message || err);
+  }
+};
+
+watch(
+  () => beneficiaryStore.beneficiaries,
+  (list) => {
+    if (!list) return;
+    for (const b of list) {
+      if (b.photo_path && !avatarCache.value[b.photo_path]) {
+        cacheAvatar(b.photo_path);
+      }
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 // Beneficiary CRUD Methods
 const fetchData = async () => {
@@ -3381,6 +3837,12 @@ const openModal = async (item = null) => {
   rolloverApplied.value = false;
   showOptionalFields.value = !!(item && (item.birth_date || item.father_name || item.address || item.monthly_income));
   beneficiaryStore.openModal(item, statusStore.defaultStatusName, nextNo);
+
+  if (item && item.photo_path) {
+    loadAvatarPreview(item.photo_path);
+  } else {
+    avatarPreviewUrl.value = '';
+  }
 };
 
 const addChild = () => {
@@ -3802,6 +4264,7 @@ onMounted(async () => {
     updatePageOrientationStyle(printOrientation.value);
   });
   window.addEventListener('afterprint', () => { isPrinting.value = false; });
+  window.addEventListener('paste', handleGlobalPaste);
 
   await Promise.all([
     statusStore.loadSocialStatuses(),
@@ -3812,5 +4275,9 @@ onMounted(async () => {
   if (selectedCampaignId.value) {
     await beneficiaryStore.fetchData(selectedCampaignId.value);
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('paste', handleGlobalPaste);
 });
 </script>

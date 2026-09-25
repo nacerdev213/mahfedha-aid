@@ -59,6 +59,10 @@ pub struct BeneficiaryRecord {
     #[serde(default)]
     pub children_count: Option<i64>,
     #[serde(default)]
+    pub extra_priority_points: Option<i64>,
+    #[serde(default)]
+    pub photo_path: Option<String>,
+    #[serde(default)]
     pub children: Vec<ChildRecord>,
 }
 
@@ -109,6 +113,7 @@ pub struct OrgSettings {
     pub commune: String,
     pub phone: String,
     pub footer_text: String,
+    pub student_priority_points: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -116,6 +121,7 @@ pub struct SocialStatusItem {
     pub id: i64,
     pub name: String,
     pub count: i64,
+    pub base_points: i64,
     pub created_at: Option<String>,
 }
 
@@ -402,7 +408,8 @@ fn get_beneficiaries(state: State<AppState>, campaign_id: i64, search: String, s
                 r.primary_count, r.middle_count, r.secondary_count, r.record_no,
                 COALESCE(r.is_delivered, 0), r.delivered_at,
                 g.birth_date, g.birth_place, g.address, g.marital_status,
-                g.father_name, g.mother_name, g.spouse_name, g.monthly_income, g.children_count
+                g.father_name, g.mother_name, g.spouse_name, g.monthly_income, g.children_count,
+                COALESCE(r.extra_priority_points, 0), g.photo_path
          FROM campaign_records r
          JOIN guardians g ON r.guardian_id = g.id
          WHERE r.campaign_id = ?1 AND (g.guardian_name LIKE ?2 OR g.phone LIKE ?2 OR CAST(r.record_no AS TEXT) LIKE ?2)"
@@ -443,6 +450,8 @@ fn get_beneficiaries(state: State<AppState>, campaign_id: i64, search: String, s
             spouse_name: row.get(17)?,
             monthly_income: row.get(18)?,
             children_count: row.get(19)?,
+            extra_priority_points: row.get::<_, Option<i64>>(20)?,
+            photo_path: row.get(21)?,
         })
     };
 
@@ -522,7 +531,7 @@ fn check_beneficiary_match(
     // Search guardians with exact name or containing name
     let mut stmt = conn.prepare(
         "SELECT id, guardian_name, phone, social_status, birth_date, birth_place, address,
-                marital_status, father_name, mother_name, spouse_name, monthly_income, children_count
+                marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, photo_path
          FROM guardians
          WHERE TRIM(guardian_name) = ?1 OR TRIM(guardian_name) LIKE ?2"
     ).map_err(|e| e.to_string())?;
@@ -551,6 +560,8 @@ fn check_beneficiary_match(
             spouse_name: row.get(10)?,
             monthly_income: row.get(11)?,
             children_count: row.get(12)?,
+            extra_priority_points: Some(0),
+            photo_path: row.get(13)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -602,6 +613,11 @@ fn check_beneficiary_match(
             matched.primary_count = p;
             matched.middle_count = m;
             matched.secondary_count = s;
+            matched.extra_priority_points = conn.query_row(
+                "SELECT COALESCE(extra_priority_points, 0) FROM campaign_records WHERE id = ?1",
+                params![rid],
+                |r| r.get(0)
+            ).ok();
 
             return Ok(BeneficiaryMatchResult {
                 match_type: "current_campaign".into(),
@@ -713,6 +729,7 @@ fn save_beneficiary(state: State<AppState>, campaign_id: i64, payload: Beneficia
     let spouse_name = payload.spouse_name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let monthly_income = payload.monthly_income.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let children_count = payload.children_count;
+    let photo_path = payload.photo_path.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
 
     // Check duplicate in current campaign if creating a new record (payload.id is None)
     if payload.id.is_none() {
@@ -769,9 +786,10 @@ fn save_beneficiary(state: State<AppState>, campaign_id: i64, payload: Beneficia
         tx.execute(
             "UPDATE guardians SET guardian_name = ?1, phone = ?2, social_status = ?3,
              birth_date = ?4, birth_place = ?5, address = ?6, marital_status = ?7,
-             father_name = ?8, mother_name = ?9, spouse_name = ?10, monthly_income = ?11, children_count = ?12
-             WHERE id = ?13",
-            params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, gid],
+             father_name = ?8, mother_name = ?9, spouse_name = ?10, monthly_income = ?11, children_count = ?12,
+             photo_path = ?13
+             WHERE id = ?14",
+            params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, photo_path, gid],
         ).map_err(|e| e.to_string())?;
         gid
     } else {
@@ -807,31 +825,34 @@ fn save_beneficiary(state: State<AppState>, campaign_id: i64, payload: Beneficia
                  mother_name = COALESCE(?8, mother_name),
                  spouse_name = COALESCE(?9, spouse_name),
                  monthly_income = COALESCE(?10, monthly_income),
-                 children_count = COALESCE(?11, children_count)
-                 WHERE id = ?12",
-                params![payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, gid],
+                 children_count = COALESCE(?11, children_count),
+                 photo_path = COALESCE(?12, photo_path)
+                 WHERE id = ?13",
+                params![payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, photo_path, gid],
             ).map_err(|e| e.to_string())?;
             gid
         } else {
             tx.execute(
-                "INSERT INTO guardians (guardian_name, phone, social_status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-                params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count],
+                "INSERT INTO guardians (guardian_name, phone, social_status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, photo_path)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                params![name, payload.phone.trim(), status, birth_date, birth_place, address, marital_status, father_name, mother_name, spouse_name, monthly_income, children_count, photo_path],
             ).map_err(|e| e.to_string())?;
             tx.last_insert_rowid()
         }
     };
 
+    let extra_pts = payload.extra_priority_points.unwrap_or(0);
+
     if let Some(rid) = payload.id {
         tx.execute(
-            "UPDATE campaign_records SET record_no = ?1, primary_count = ?2, middle_count = ?3, secondary_count = ?4 WHERE id = ?5 AND campaign_id = ?6",
-            params![rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0), rid, campaign_id],
+            "UPDATE campaign_records SET record_no = ?1, primary_count = ?2, middle_count = ?3, secondary_count = ?4, extra_priority_points = ?5 WHERE id = ?6 AND campaign_id = ?7",
+            params![rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0), extra_pts, rid, campaign_id],
         ).map_err(|e| e.to_string())?;
     } else {
         tx.execute(
-            "INSERT INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![campaign_id, guardian_id, rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0)],
+            "INSERT INTO campaign_records (campaign_id, guardian_id, record_no, primary_count, middle_count, secondary_count, extra_priority_points)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![campaign_id, guardian_id, rec_no, payload.primary_count.max(0), payload.middle_count.max(0), payload.secondary_count.max(0), extra_pts],
         ).map_err(|e| e.to_string())?;
     }
 
@@ -1248,7 +1269,7 @@ fn batch_import_records(state: State<AppState>, campaign_id: i64, records: Vec<B
 fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let settings = conn.query_row(
-        "SELECT id, org_name, branch_name, wilaya, commune, phone, footer_text FROM organization_settings WHERE id = 1",
+        "SELECT id, org_name, branch_name, wilaya, commune, phone, footer_text, student_priority_points FROM organization_settings WHERE id = 1",
         [],
         |row| {
             Ok(OrgSettings {
@@ -1259,6 +1280,7 @@ fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
                 commune: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
                 phone: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
                 footer_text: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                student_priority_points: row.get::<_, Option<i64>>(7)?.or(Some(5)),
             })
         },
     ).optional().map_err(|e| e.to_string())?;
@@ -1271,22 +1293,25 @@ fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
         commune: "".into(),
         phone: "".into(),
         footer_text: "وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.".into(),
+        student_priority_points: Some(5),
     }))
 }
 
 #[tauri::command]
 fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<(), String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let pts = settings.student_priority_points.unwrap_or(5);
     conn.execute(
-        "INSERT INTO organization_settings (id, org_name, branch_name, wilaya, commune, phone, footer_text)
-         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)
+        "INSERT INTO organization_settings (id, org_name, branch_name, wilaya, commune, phone, footer_text, student_priority_points)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)
          ON CONFLICT(id) DO UPDATE SET
          org_name = excluded.org_name,
          branch_name = excluded.branch_name,
          wilaya = excluded.wilaya,
          commune = excluded.commune,
          phone = excluded.phone,
-         footer_text = excluded.footer_text",
+         footer_text = excluded.footer_text,
+         student_priority_points = excluded.student_priority_points",
         params![
             settings.org_name.trim(),
             settings.branch_name.trim(),
@@ -1294,6 +1319,7 @@ fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<()
             settings.commune.trim(),
             settings.phone.trim(),
             settings.footer_text.trim(),
+            pts,
         ],
     ).map_err(|e| e.to_string())?;
     Ok(())
@@ -1308,7 +1334,7 @@ fn write_binary_file(path: String, contents: Vec<u8>) -> Result<(), String> {
 fn get_social_statuses(state: State<AppState>) -> Result<Vec<SocialStatusItem>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
-        "SELECT s.id, s.name, COUNT(g.id) as count, s.created_at
+        "SELECT s.id, s.name, COUNT(g.id) as count, s.base_points, s.created_at
          FROM social_statuses s
          LEFT JOIN guardians g ON g.social_status = s.name
          GROUP BY s.id, s.name
@@ -1320,7 +1346,8 @@ fn get_social_statuses(state: State<AppState>) -> Result<Vec<SocialStatusItem>, 
             id: row.get(0)?,
             name: row.get(1)?,
             count: row.get(2)?,
-            created_at: row.get(3)?,
+            base_points: row.get(3).unwrap_or(20),
+            created_at: row.get(4)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -1334,16 +1361,17 @@ fn get_social_statuses(state: State<AppState>) -> Result<Vec<SocialStatusItem>, 
 }
 
 #[tauri::command]
-fn create_social_status(state: State<AppState>, name: String) -> Result<SocialStatusItem, String> {
+fn create_social_status(state: State<AppState>, name: String, base_points: Option<i64>) -> Result<SocialStatusItem, String> {
     let name = name.trim();
     if name.is_empty() {
         return Err("اسم الحالة الاجتماعية مطلوب".into());
     }
+    let points = base_points.unwrap_or(20);
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO social_statuses (name) VALUES (?1)",
-        params![name]
+        "INSERT INTO social_statuses (name, base_points) VALUES (?1, ?2)",
+        params![name, points]
     ).map_err(|e| format!("فشل إضافة الحالة الاجتماعية (قد تكون موجودة مسبقاً): {}", e))?;
 
     let id = conn.last_insert_rowid();
@@ -1351,16 +1379,18 @@ fn create_social_status(state: State<AppState>, name: String) -> Result<SocialSt
         id,
         name: name.to_string(),
         count: 0,
+        base_points: points,
         created_at: None,
     })
 }
 
 #[tauri::command]
-fn update_social_status(state: State<AppState>, id: i64, new_name: String) -> Result<(), String> {
+fn update_social_status(state: State<AppState>, id: i64, new_name: String, base_points: Option<i64>) -> Result<(), String> {
     let new_name = new_name.trim();
     if new_name.is_empty() {
         return Err("اسم الحالة الاجتماعية لا يمكن أن يكون فارغاً".into());
     }
+    let points = base_points.unwrap_or(20);
 
     let mut conn = state.db.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -1372,9 +1402,9 @@ fn update_social_status(state: State<AppState>, id: i64, new_name: String) -> Re
     ).map_err(|_| "الحالة الاجتماعية غير موجودة".to_string())?;
 
     tx.execute(
-        "UPDATE social_statuses SET name = ?1 WHERE id = ?2",
-        params![new_name, id]
-    ).map_err(|e| format!("فشل تعديل الاسم (قد يكون الاسم مكرراً): {}", e))?;
+        "UPDATE social_statuses SET name = ?1, base_points = ?2 WHERE id = ?3",
+        params![new_name, points, id]
+    ).map_err(|e| format!("فشل تعديل الحالة الاجتماعية (قد يكون الاسم مكرراً): {}", e))?;
 
     // Cascade rename to guardians table so existing records remain linked!
     tx.execute(
@@ -1493,7 +1523,7 @@ fn update_education_level(state: State<AppState>, id: i64, year_name: String) ->
     let mut conn = state.db.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let old_name: String = tx.query_row(
+    let _old_name: String = tx.query_row(
         "SELECT year_name FROM education_levels WHERE id = ?1",
         params![id],
         |row| row.get(0)
@@ -1595,6 +1625,228 @@ fn get_education_level_stats(state: State<AppState>, campaign_id: i64) -> Result
     Ok(stats)
 }
 
+fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
+    let clean_input = if let Some(idx) = input.find(',') {
+        &input[idx + 1..]
+    } else {
+        input
+    }.trim();
+
+    let mut buf = Vec::with_capacity(clean_input.len() * 3 / 4);
+    let mut accumulator: u32 = 0;
+    let mut bits_collected: u32 = 0;
+
+    for b in clean_input.bytes() {
+        let val = match b {
+            b'A'..=b'Z' => (b - b'A') as u32,
+            b'a'..=b'z' => (b - b'a' + 26) as u32,
+            b'0'..=b'9' => (b - b'0' + 52) as u32,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => continue,
+            b' ' | b'\r' | b'\n' | b'\t' => continue,
+            _ => return Err(format!("رمز base64 غير صالح: {}", b as char)),
+        };
+
+        accumulator = (accumulator << 6) | val;
+        bits_collected += 6;
+
+        if bits_collected >= 8 {
+            bits_collected -= 8;
+            let byte = ((accumulator >> bits_collected) & 0xFF) as u8;
+            buf.push(byte);
+        }
+    }
+
+    Ok(buf)
+}
+
+fn encode_base64(data: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+
+        result.push(TABLE[((triple >> 18) & 0x3F) as usize] as char);
+        result.push(TABLE[((triple >> 12) & 0x3F) as usize] as char);
+        if chunk.len() > 1 {
+            result.push(TABLE[((triple >> 6) & 0x3F) as usize] as char);
+        } else {
+            result.push('=');
+        }
+        if chunk.len() > 2 {
+            result.push(TABLE[(triple & 0x3F) as usize] as char);
+        } else {
+            result.push('=');
+        }
+    }
+    result
+}
+
+fn get_avatars_dir(app_handle: &tauri::AppHandle) -> std::path::PathBuf {
+    let base_dir = app_handle
+        .path_resolver()
+        .app_local_data_dir()
+        .or_else(|| app_handle.path_resolver().app_data_dir())
+        .unwrap_or_else(|| {
+            get_db_path()
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+        });
+    let dir = base_dir.join("avatars");
+    let _ = std::fs::create_dir_all(&dir);
+    dir
+}
+
+#[tauri::command]
+async fn save_avatar_file(app_handle: tauri::AppHandle, base64_image: String) -> Result<String, String> {
+    let bytes = decode_base64(&base64_image)?;
+    if bytes.is_empty() {
+        return Err("محتوى الصورة فارغ".to_string());
+    }
+
+    let avatars_dir = get_avatars_dir(&app_handle);
+
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static AVATAR_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+    let timestamp = now.as_secs();
+    let nanos = now.subsec_nanos();
+    let counter = AVATAR_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let pid = std::process::id();
+    let uuid_str = format!("{:08x}{:04x}{:04x}", nanos, (pid & 0xFFFF) as u16, (counter & 0xFFFF) as u16);
+    let filename = format!("avatar_{}_{}.webp", timestamp, uuid_str);
+    let rel_path = format!("avatars/{}", filename);
+    let file_path = avatars_dir.join(&filename);
+
+    std::fs::write(&file_path, &bytes).map_err(|e| format!("فشل حفظ ملف الصورة: {}", e))?;
+
+    // Also mirror to DB directory if different
+    if let Some(db_parent) = get_db_path().parent() {
+        let db_avatars = db_parent.join("avatars");
+        if db_avatars != avatars_dir {
+            let _ = std::fs::create_dir_all(&db_avatars);
+            let _ = std::fs::write(db_avatars.join(&filename), &bytes);
+        }
+    }
+
+    Ok(rel_path)
+}
+
+#[tauri::command]
+async fn load_avatar_file(app_handle: tauri::AppHandle, filename: String) -> Result<String, String> {
+    if filename.trim().is_empty() {
+        return Err("اسم الملف فارغ".to_string());
+    }
+    let raw_name = filename.replace('\\', "/");
+    let simple_name = raw_name.split('/').last().unwrap_or(&raw_name);
+
+    let avatar_dir = get_avatars_dir(&app_handle);
+    let target = avatar_dir.join(simple_name);
+
+    let path_to_read = if target.exists() {
+        target
+    } else {
+        let fallback = get_db_path()
+            .parent()
+            .map(|p| p.join("avatars").join(simple_name))
+            .unwrap_or_else(|| std::path::PathBuf::from("avatars").join(simple_name));
+        if fallback.exists() {
+            fallback
+        } else {
+            return Err("ملف الصورة غير موجود".to_string());
+        }
+    };
+
+    let bytes = std::fs::read(&path_to_read).map_err(|e| e.to_string())?;
+    let b64 = encode_base64(&bytes);
+    Ok(format!("data:image/webp;base64,{}", b64))
+}
+
+#[tauri::command]
+async fn delete_avatar_file(app_handle: tauri::AppHandle, filename: String) -> Result<(), String> {
+    if filename.trim().is_empty() {
+        return Ok(());
+    }
+    let raw_name = filename.replace('\\', "/");
+    let simple_name = raw_name.split('/').last().unwrap_or(&raw_name);
+    let avatar_dir = get_avatars_dir(&app_handle);
+    let target = avatar_dir.join(simple_name);
+    if target.exists() {
+        let _ = std::fs::remove_file(target);
+    }
+    if let Some(parent) = get_db_path().parent() {
+        let fallback = parent.join("avatars").join(simple_name);
+        if fallback.exists() {
+            let _ = std::fs::remove_file(fallback);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn open_scanner_app() -> Result<String, String> {
+    // 1. Candidate third-party scanner applications
+    let candidate_paths = [
+        r"C:\Program Files\NAPS2\NAPS2.exe",
+        r"C:\Program Files (x86)\NAPS2\NAPS2.exe",
+        r"C:\Program Files (x86)\Canon\IJ Scan Utility\SCANUTILITY.exe",
+        r"C:\Program Files\Canon\IJ Scan Utility\SCANUTILITY.exe",
+        r"C:\Program Files (x86)\HP\HP Scan\HPScan.exe",
+        r"C:\Program Files\HP\HP Scan\HPScan.exe",
+        r"C:\Program Files (x86)\Brother\iPrint&Scan\Brother iPrint&Scan.exe",
+        r"C:\Program Files (x86)\epson\Epson Scan 2\Core\es2.exe",
+        r"C:\Program Files\epson\Epson Scan 2\Core\es2.exe",
+    ];
+
+    for path in candidate_paths {
+        if std::path::Path::new(path).exists() {
+            if std::process::Command::new(path).spawn().is_ok() {
+                return Ok(format!("تم تشغيل تطبيق الماسح: {}", path));
+            }
+        }
+    }
+
+    // 2. Check Windows native wiaacmgr.exe or WFS.exe (Windows Fax and Scan)
+    let wia_path = r"C:\Windows\System32\wiaacmgr.exe";
+    let wfs_path = r"C:\Windows\System32\WFS.exe";
+
+    if std::path::Path::new(wia_path).exists() {
+        if std::process::Command::new(wia_path).spawn().is_ok() {
+            return Ok("تم تشغيل معالج المسح الضوئي لويندوز (WIA)".into());
+        }
+    }
+
+    if std::path::Path::new(wfs_path).exists() {
+        if std::process::Command::new(wfs_path).spawn().is_ok() {
+            return Ok("تم تشغيل فاكس ومسح ويندوز (WFS)".into());
+        }
+    }
+
+    // 3. Fallback: Launch Windows Modern Scan App protocol via explorer.exe
+    let res = std::process::Command::new("explorer.exe")
+        .arg(r"shell:appsFolder\Microsoft.WindowsScan_8wekyb3d8bbwe!App")
+        .spawn();
+
+    if res.is_ok() {
+        return Ok("تم تشغيل تطبيق الماسح الضوئي لويندوز".into());
+    }
+
+    // 4. Last resort: launch wiaacmgr via cmd start
+    let _ = std::process::Command::new("cmd.exe")
+        .args(["/c", "start", "wiaacmgr.exe"])
+        .spawn()
+        .map_err(|e| format!("تعذر تشغيل تطبيق الماسح الضوئي: {}", e))?;
+
+    Ok("تم إرسال أمر تشغيل الماسح الضوئي".into())
+}
+
 fn get_db_path() -> std::path::PathBuf {
     // 1. If running in development (inside the project repo)
     if let Ok(cur) = std::env::current_dir() {
@@ -1669,6 +1921,7 @@ fn main() {
             guardian_name TEXT NOT NULL,
             phone TEXT,
             social_status TEXT NOT NULL,
+            photo_path TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -1809,6 +2062,20 @@ fn main() {
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN social_status_id INTEGER REFERENCES social_statuses(id)", []);
     let _ = conn.execute("UPDATE guardians SET social_status_id = (SELECT id FROM social_statuses WHERE social_statuses.name = guardians.social_status) WHERE social_status_id IS NULL", []);
 
+    // Migration: add base_points to social_statuses
+    let _ = conn.execute("ALTER TABLE social_statuses ADD COLUMN base_points INTEGER DEFAULT 20", []);
+    let _ = conn.execute("UPDATE social_statuses SET base_points = 40 WHERE name = 'بدون دخل' AND (base_points IS NULL OR base_points = 20)", []);
+    let _ = conn.execute("UPDATE social_statuses SET base_points = 35 WHERE name = 'إعاقة' AND (base_points IS NULL OR base_points = 20)", []);
+    let _ = conn.execute("UPDATE social_statuses SET base_points = 30 WHERE name = 'مرض مزمن' AND (base_points IS NULL OR base_points = 20)", []);
+    let _ = conn.execute("UPDATE social_statuses SET base_points = 20 WHERE name = 'ضعيف الدخل' AND (base_points IS NULL OR base_points = 20)", []);
+    let _ = conn.execute("UPDATE social_statuses SET base_points = 10 WHERE name = 'متقاعد' AND (base_points IS NULL OR base_points = 20)", []);
+
+    // Migration: add student_priority_points to organization_settings
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN student_priority_points INTEGER DEFAULT 5", []);
+
+    // Migration: add extra_priority_points to campaign_records
+    let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN extra_priority_points INTEGER DEFAULT 0", []);
+
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN birth_date TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN birth_place TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN address TEXT", []);
@@ -1818,6 +2085,7 @@ fn main() {
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN spouse_name TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN monthly_income TEXT", []);
     let _ = conn.execute("ALTER TABLE guardians ADD COLUMN children_count INTEGER", []);
+    let _ = conn.execute("ALTER TABLE guardians ADD COLUMN photo_path TEXT", []);
 
     // Migration: add education_level_id to guardian_children
     let _ = conn.execute("ALTER TABLE guardian_children ADD COLUMN education_level_id INTEGER REFERENCES education_levels(id)", []);
@@ -1903,7 +2171,11 @@ fn main() {
             create_education_level,
             update_education_level,
             delete_education_level,
-            get_education_level_stats
+            get_education_level_stats,
+            save_avatar_file,
+            load_avatar_file,
+            delete_avatar_file,
+            open_scanner_app
         ])
         .run(tauri::generate_context!())
         .expect("خطأ أثناء تشغيل Tauri");

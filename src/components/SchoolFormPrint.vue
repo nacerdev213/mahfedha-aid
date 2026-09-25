@@ -28,8 +28,9 @@
       </div>
 
       <!-- Left: Photo Box -->
-      <div class="w-24 h-32 border-2 border-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-50/50 shrink-0 shadow-2xs">
-        <span>صورة</span>
+      <div class="w-24 h-32 border-2 border-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-50/50 shrink-0 shadow-2xs overflow-hidden">
+        <img v-if="avatarSrc" :src="avatarSrc" alt="صورة المستفيد" class="w-full h-full object-cover" />
+        <span v-else>صورة</span>
       </div>
     </div>
 
@@ -235,7 +236,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { safeInvoke } from '../stores/tauri';
 
 const props = defineProps({
   beneficiary: {
@@ -255,6 +257,24 @@ const props = defineProps({
     default: false
   }
 });
+
+const avatarSrc = ref('');
+
+watch(
+  () => props.beneficiary?.photo_path,
+  async (path) => {
+    if (path && !props.isBlank) {
+      try {
+        avatarSrc.value = await safeInvoke('load_avatar_file', { filename: path });
+      } catch (e) {
+        avatarSrc.value = '';
+      }
+    } else {
+      avatarSrc.value = '';
+    }
+  },
+  { immediate: true }
+);
 
 // Total children who receive school bags
 const totalChildrenBags = computed(() => {

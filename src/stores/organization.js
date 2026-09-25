@@ -10,7 +10,8 @@ export const useOrganizationStore = defineStore('organization', {
       wilaya: 'قسنطينة',
       commune: '',
       phone: '',
-      footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.'
+      footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.',
+      student_priority_points: 5
     },
     showSettingsModal: false,
     settingsForm: {
@@ -20,7 +21,8 @@ export const useOrganizationStore = defineStore('organization', {
       wilaya: 'قسنطينة',
       commune: '',
       phone: '',
-      footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.'
+      footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.',
+      student_priority_points: 5
     },
     isLoading: false,
   }),
