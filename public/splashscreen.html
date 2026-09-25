@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>منظومة تسجيل وتوزيع المحافظ المدرسية</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, -apple-system, Cairo, Tahoma, Arial, sans-serif;
+    }
+
+    /* Draggable window container */
+    .splash-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .splash-card {
+      position: relative;
+      width: 620px;
+      height: 360px;
+      background: linear-gradient(135deg, #090d16 0%, #0f172a 45%, #1e1b4b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 20px;
+      box-shadow: 
+        0 25px 60px -10px rgba(0, 0, 0, 0.75),
+        0 0 45px rgba(99, 102, 241, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px 28px 20px;
+      color: #ffffff;
+      cursor: grab;
+      overflow: hidden;
+    }
+
+    .splash-card:active {
+      cursor: grabbing;
+    }
+
+    /* Decorative background ambient glows */
+    .glow-top-left {
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .glow-bottom-right {
+      position: absolute;
+      bottom: -60px;
+      right: -60px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.2) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Top bar: Drag handle hint & Close Button */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 10;
+    }
+
+    .brand-edition-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-edition-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .close-button {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer !important;
+      transition: all 0.18s ease;
+    }
+
+    .close-button:hover {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #ffffff;
+      transform: scale(1.05);
+    }
+
+    .close-button:active {
+      transform: scale(0.95);
+    }
+
+    /* Main Center Branding */
+    .brand-center {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: auto 0;
+    }
+
+    .logo-box {
+      width: 84px;
+      height: 84px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .logo-box img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+    }
+
+    .brand-texts {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .app-title {
+      font-size: 23px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .app-subtitle-en {
+      font-size: 11px;
+      font-weight: 700;
+      color: #818cf8;
+      letter-spacing: 1.2px;
+      font-family: 'Segoe UI', monospace, sans-serif;
+    }
+
+    .app-description {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    /* Bottom: Office-Style Progress & Status */
+    .bottom-section {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .status-text {
+      color: #e2e8f0;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-hint {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* Microsoft Office Indeterminate Progress Bar */
+    .progress-bar-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-indicator {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 35%;
+      background: linear-gradient(90deg, transparent 0%, #6366f1 50%, #38bdf8 100%);
+      border-radius: 4px;
+      box-shadow: 0 0 12px #38bdf8;
+      animation: office-progress 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes office-progress {
+      0% {
+        right: -35%;
+        width: 35%;
+      }
+      50% {
+        width: 50%;
+      }
+      100% {
+        right: 100%;
+        width: 35%;
+      }
+    }
+
+    /* Footer Metadata */
+    .footer-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .developer-tag {
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .developer-tag span {
+      color: #a5b4fc;
+    }
+
+    .drag-hint {
+      font-size: 10px;
+      color: #475569;
+    }
+
+    .no-drag {
+      cursor: pointer !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash-container" data-tauri-drag-region>
+    <div class="splash-card" id="splashCard" data-tauri-drag-region>
+      
+      <!-- Ambient Glows -->
+      <div class="glow-top-left"></div>
+      <div class="glow-bottom-right"></div>
+
+      <!-- Top Bar: Badge & Dismiss Button -->
+      <div class="top-bar" data-tauri-drag-region>
+        <div class="brand-edition-badge" data-tauri-drag-region>
+          <span class="dot"></span>
+          <span>الإصدار 1.6.0 • Desktop Edition</span>
+        </div>
+
+        <button 
+          type="button" 
+          class="close-button no-drag" 
+          onclick="dismissSplash()" 
+          title="تخطي شاشة البدء والفتح المباشر (Esc)"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Center: App Icon & Title -->
+      <div class="brand-center" data-tauri-drag-region>
+        <div class="logo-box" data-tauri-drag-region>
+          <img src="app-icon.png" alt="Logo" onerror="this.src='favicon.ico'" />
+        </div>
+
+        <div class="brand-texts" data-tauri-drag-region>
+          <h1 class="app-title">منظومة تسجيل وتوزيع المحافظ</h1>
+          <div class="app-subtitle-en">MAHFEDHA AID MANAGEMENT SYSTEM</div>
+          <p class="app-description">منظومة متكاملة لإدارة التضامن المدرسي، التوزيع، والإحصاءات الميدانية</p>
+        </div>
+      </div>
+
+      <!-- Bottom: Progress Bar & Dynamic Status -->
+      <div class="bottom-section" data-tauri-drag-region>
+        <div class="status-row" data-tauri-drag-region>
+          <div class="status-text" id="statusText">
+            <div class="status-spinner"></div>
+            <span id="statusLabel">جاري تهيئة محرك التطبيق وقاعدة البيانات...</span>
+          </div>
+          <div class="status-hint">انقر واسحب لتحريك النافذة</div>
+        </div>
+
+        <!-- Microsoft Office Style Progress Bar -->
+        <div class="progress-bar-track">
+          <div class="progress-bar-indicator"></div>
+        </div>
+
+        <!-- Footer Credits -->
+        <div class="footer-meta" data-tauri-drag-region>
+          <div class="developer-tag">
+            تطوير: <span>نصرالدين حداد</span> (Développeur Full-Stack)
+          </div>
+          <div>SQLite • Offline-First Engine</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Status text animation sequence (Office-style)
+    const statusSteps = [
+      'جاري تهيئة محرك التطبيق...',
+      'تحميل محرك قاعدة البيانات SQLite المشفرة...',
+      'فحص الحملات وسجلات المستفيدين...',
+      'تجهيز الواجهة الرسومية والأدوات...',
+      'اكتمل التحميل، جاري فتح المنظومة...'
+    ];
+
+    let currentStep = 0;
+    const statusLabel = document.getElementById('statusLabel');
+
+    const statusInterval = setInterval(() => {
+      currentStep++;
+      if (currentStep < statusSteps.length) {
+        if (statusLabel) {
+          statusLabel.textContent = statusSteps[currentStep];
+        }
+      } else {
+        clearInterval(statusInterval);
+      }
+    }, 450);
+
+    // Dismiss Splashscreen: Shows main window and closes splashscreen, app never terminates
+    let isDismissed = false;
+    async function dismissSplash() {
+      if (isDismissed) return;
+      isDismissed = true;
+
+      try {
+        if (window.__TAURI__) {
+          const invoke = window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
+          if (invoke) {
+            await invoke('close_splashscreen');
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Error invoking close_splashscreen:', e);
+      }
+
+      // Web preview fallback
+      try {
+        window.close();
+      } catch (_) {}
+    }
+
+    // Keyboard shortcuts (Escape or Enter to dismiss immediately)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        dismissSplash();
+      }
+    });
+
+    // Native Dragging Support for Tauri Window
+    const splashCard = document.getElementById('splashCard');
+    if (splashCard) {
+      splashCard.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.no-drag')) return;
+        try {
+          if (window.__TAURI__ && window.__TAURI__.window && window.__TAURI__.window.appWindow) {
+            window.__TAURI__.window.appWindow.startDragging();
+          }
+        } catch (_) {}
+      });
+    }
+
+    // Safety timeout: If main window doesn't dismiss within 7 seconds, auto-reveal
+    setTimeout(() => {
+      dismissSplash();
+    }, 7000);
+  </script>
+</body>
+</html>

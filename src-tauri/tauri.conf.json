@@ -3,15 +3,20 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "devPath": "http://127.0.0.1:1420",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "منظومة تسجيل وتوزيع المحافظ",
-    "version": "1.4.0"
+    "version": "1.6.0"
   },
   "tauri": {
     "allowlist": {
       "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
       "dialog": {
         "all": false,
         "save": true,
@@ -41,11 +46,25 @@
     "windows": [
       {
         "label": "main",
-        "title": "منظومة تسجيل وتوزيع المحافظ المدرسية (v1.4.0)",
+        "title": "منظومة تسجيل وتوزيع المحافظ المدرسية (v1.6.0)",
         "width": 1150,
         "height": 750,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "منظومة تسجيل وتوزيع المحافظ المدرسية",
+        "url": "splashscreen.html",
+        "width": 640,
+        "height": 380,
+        "resizable": false,
+        "decorations": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "transparent": true,
+        "skipTaskbar": false
       }
     ]
   }

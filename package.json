@@ -1,7 +1,27 @@
 {
   "name": "school-aid-app",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.6.0",
+  "description": "منظومة تسجيل وتوزيع المحافظ المدرسية - تطبيق مكتبي متكامل لإدارة حملات التضامن المدرسي للجمعيات الخيرية ولجان الإغاثة",
+  "author": "Nacereddine Haddad <haddadnacereddine@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nacerdev213/mahfedha-aid.git"
+  },
+  "homepage": "https://github.com/nacerdev213/mahfedha-aid#readme",
+  "keywords": [
+    "tauri",
+    "vue3",
+    "rust",
+    "sqlite",
+    "charity",
+    "school-aid",
+    "algeria",
+    "education",
+    "offline-first",
+    "arabic"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",

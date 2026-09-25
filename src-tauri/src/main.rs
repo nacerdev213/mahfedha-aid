@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{Manager, State};
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 
@@ -2773,6 +2773,7 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState { db: Mutex::new(conn) })
         .invoke_handler(tauri::generate_handler![
+            close_splashscreen,
             get_campaigns,
             create_campaign,
             rollover_campaign_records,
@@ -2817,4 +2818,19 @@ fn main() {
         ])
         .run(tauri::generate_context!("tauri.conf.json"))
         .expect("خطأ أثناء تشغيل Tauri");
+}
+
+#[tauri::command]
+async fn close_splashscreen(window: tauri::Window) -> Result<(), String> {
+    // 1. First ensure main window is visible, unminimized, and focused
+    if let Some(main_win) = window.get_window("main") {
+        let _ = main_win.show();
+        let _ = main_win.unminimize();
+        let _ = main_win.set_focus();
+    }
+    // 2. Safely close splashscreen window
+    if let Some(splash_win) = window.get_window("splashscreen") {
+        let _ = splash_win.close();
+    }
+    Ok(())
 }

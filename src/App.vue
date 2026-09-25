@@ -1,5 +1,5 @@
 <template>
-  <div dir="rtl" class="h-screen overflow-hidden flex flex-col p-3 sm:p-4 w-full max-w-[1720px] mx-auto md:pr-20 print:h-auto print:overflow-visible print:p-0 print:m-0">
+  <div dir="rtl" class="h-screen overflow-hidden flex flex-col p-3 sm:p-4 w-full max-w-[1720px] mx-auto md:pr-20 print:h-auto print:overflow-visible print:p-0 print:m-0" :class="{ 'print:hidden': showHelpModal }">
     <!-- Action Header Toolbar (Single-line, slim & space-efficient) -->
     <header class="flex items-center justify-between gap-3 mb-2.5 no-print shrink-0">
       <!-- Right (RTL Start): Season Selector & Management -->
@@ -39,6 +39,14 @@
           title="النسخ الاحتياطي والاسترجاع وإعادة ضبط المصنع">
           <span class="text-base">💾</span>
           <span>النسخ الاحتياطي والأمان</span>
+        </button>
+
+        <!-- Help Guide Action Button -->
+        <button @click="openHelpModal()"
+          class="bg-white border border-slate-300 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 text-slate-700 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+          title="دليل الاستخدام والمساعدة الشامل (F1)">
+          <span class="text-base">📖</span>
+          <span>دليل الاستخدام</span>
         </button>
 
         <!-- Primary Action: always single line, never wraps -->
@@ -205,6 +213,30 @@
             النسخ الاحتياطي والأمان
           </span>
         </button>
+
+        <!-- 10. Help Center Guide -->
+        <button 
+          @click="openHelpModal()" 
+          class="w-10 h-10 rounded-xl flex items-center justify-center text-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 transition-all duration-150 cursor-pointer group relative"
+          title="دليل الاستخدام والمساعدة الشامل (F1)"
+        >
+          <span>📖</span>
+          <span class="absolute right-14 bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            دليل الاستخدام والمساعدة (F1)
+          </span>
+        </button>
+
+        <!-- 11. Developer Contact Info -->
+        <button 
+          @click="openDeveloperModal()" 
+          class="w-10 h-10 rounded-xl flex items-center justify-center text-lg text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-all duration-150 cursor-pointer group relative"
+          title="معلومات المطور والدعم الفني"
+        >
+          <span>👨‍💻</span>
+          <span class="absolute right-14 bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            معلومات المطور والدعم الفني
+          </span>
+        </button>
       </div>
 
       <!-- Bottom: App Icon / Version indicator -->
@@ -369,18 +401,36 @@
               <div class="text-[11px] text-emerald-600 font-normal">تصدير مشفر، استرجاع آمن، وتصفير شامل</div>
             </div>
           </button>
+
+          <button @click="openHelpModal(); closeSidebar()"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-amber-900 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/80 transition group cursor-pointer">
+            <span class="text-xl group-hover:scale-110 transition-transform">📖</span>
+            <div class="text-right">
+              <div class="font-bold">دليل الاستخدام والمساعدة</div>
+              <div class="text-[11px] text-amber-700 font-normal">مرجع مفصل لكافة وظائف وأوامر المنظومة (F1)</div>
+            </div>
+          </button>
+
+          <button @click="openDeveloperModal(); closeSidebar()"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100/90 border border-indigo-200/80 transition group cursor-pointer">
+            <span class="text-xl group-hover:scale-110 transition-transform">👨‍💻</span>
+            <div class="text-right">
+              <div class="font-bold">معلومات المطور والدعم الفني</div>
+              <div class="text-[11px] text-indigo-700 font-normal">هاتف، واتساب، إيميل، والمواقع الرسمية</div>
+            </div>
+          </button>
         </div>
 
         <!-- Drawer Footer: info -->
         <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between text-[11px] text-slate-500">
           <span>الموسم الحالي: <strong class="text-indigo-600">{{ activeCampaignLabel }}</strong></span>
-          <span class="font-mono font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded text-[10px]">v1.4.0</span>
+          <button @click="openDeveloperModal()" class="font-mono font-bold text-slate-600 hover:text-indigo-700 bg-slate-200/70 hover:bg-indigo-100 px-2 py-0.5 rounded text-[10px] cursor-pointer transition" title="معلومات المطور والدعم الفني">v1.5.0</button>
         </div>
       </div>
     </transition>
 
     <!-- Header for Print (Official Organization Profile) -->
-    <div v-if="printDocType === 'list'" class="hidden print:block mb-6 border-b-2 border-slate-900 pb-4">
+    <div v-if="!showHelpModal && printDocType === 'list'" class="hidden print:block mb-6 border-b-2 border-slate-900 pb-4">
       <div class="flex items-start justify-between">
         <div class="text-right">
           <h2 class="text-lg font-black text-slate-900">{{ orgSettings.org_name }}</h2>
@@ -580,7 +630,7 @@
     </div>
 
     <!-- Data Table Container (Flex-1 column filling viewport with dedicated internal scroll) -->
-    <div :class="{ 'print:hidden': printDocType === 'forms' }" class="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden print:overflow-visible print:border-none print:shadow-none">
+    <div :class="{ 'print:hidden': printDocType === 'forms' || showHelpModal }" class="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden print:overflow-visible print:border-none print:shadow-none">
       <!-- Scrollable Table Body Container (Only rows scroll; header stays sticky) -->
       <div class="flex-1 overflow-y-auto overflow-x-auto relative">
         <table class="w-full text-right text-sm border-collapse">
@@ -3355,6 +3405,84 @@
     @close="showBackupModal = false"
     @restored="handleDataRestored"
   />
+
+  <!-- Comprehensive Interactive Help Center Modal -->
+  <HelpCenterModal
+    v-if="showHelpModal"
+    @close="showHelpModal = false"
+  />
+
+  <!-- Developer Contact & Support Modal -->
+  <DeveloperContactModal
+    v-if="showDeveloperModal"
+    @close="showDeveloperModal = false"
+  />
+
+  <!-- In-App Smooth Splashscreen Transition (Ensures zero blank-screen flicker) -->
+  <transition name="fade">
+    <div
+      v-if="isInitialLoading"
+      class="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 select-none no-print"
+      dir="rtl"
+    >
+      <div class="relative w-[92vw] max-w-[600px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-white/15 rounded-3xl p-6 sm:p-7 shadow-2xl text-white space-y-5 overflow-hidden">
+        <!-- Ambient Glow accents -->
+        <div class="absolute -top-12 -left-12 w-44 h-44 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-12 -right-12 w-44 h-44 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Header -->
+        <div class="relative z-10 flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+            <span>الإصدار 1.6.0 • Desktop Edition</span>
+          </div>
+
+          <button
+            type="button"
+            @click="dismissInAppSplash"
+            class="w-7 h-7 rounded-lg bg-white/10 hover:bg-rose-500 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
+            title="تخطي شاشة البدء والفتح المباشر (Esc)"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Center Branding -->
+        <div class="relative z-10 flex items-center gap-4 sm:gap-5">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-800 border-2 border-white/20 shadow-lg flex items-center justify-center shrink-0">
+            <img src="/app-icon.png" alt="Logo" class="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-md" />
+          </div>
+
+          <div class="space-y-1">
+            <h2 class="text-lg sm:text-xl font-black text-white">منظومة تسجيل وتوزيع المحافظ</h2>
+            <div class="text-[10px] sm:text-xs font-bold font-mono text-indigo-300 tracking-wider">MAHFEDHA AID MANAGEMENT SYSTEM</div>
+            <p class="text-xs text-slate-400">منظومة متكاملة لإدارة التضامن المدرسي، التوزيع، والإحصاءات الميدانية</p>
+          </div>
+        </div>
+
+        <!-- Bottom Loading & Progress -->
+        <div class="relative z-10 space-y-3">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-300">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full border-2 border-white/20 border-t-indigo-400 animate-spin"></span>
+              <span>جاري تحميل السجلات والبيانات...</span>
+            </span>
+            <span class="text-[11px] text-slate-500">انقر (✕) للفتح المباشر</span>
+          </div>
+
+          <!-- Indeterminate Office-style Progress Bar -->
+          <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
+            <div class="h-full bg-gradient-to-r from-transparent via-indigo-500 to-cyan-400 rounded-full w-2/5 animate-pulse"></div>
+          </div>
+
+          <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+            <div>تطوير: <strong class="text-slate-200">نصرالدين حداد</strong> (Développeur Full-Stack)</div>
+            <div>SQLite • Offline-First Engine</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script setup>
@@ -3372,6 +3500,34 @@ import ImportModal from './components/ImportModal.vue';
 import SchoolFormPrint from './components/SchoolFormPrint.vue';
 import AvatarCropModal from './components/AvatarCropModal.vue';
 import BackupManagerModal from './components/BackupManagerModal.vue';
+import HelpCenterModal from './components/HelpCenterModal.vue';
+import DeveloperContactModal from './components/DeveloperContactModal.vue';
+
+// Splashscreen initial loading state (guarantees zero blank screen)
+const isInitialLoading = ref(true);
+const dismissInAppSplash = () => {
+  isInitialLoading.value = false;
+  try {
+    if (window.__TAURI__) {
+      const invoke = window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
+      if (invoke) {
+        invoke('close_splashscreen');
+      }
+    }
+  } catch (_) {}
+};
+
+// Developer Contact modal state
+const showDeveloperModal = ref(false);
+const openDeveloperModal = () => {
+  showDeveloperModal.value = true;
+};
+
+// Help Center modal state
+const showHelpModal = ref(false);
+const openHelpModal = () => {
+  showHelpModal.value = true;
+};
 
 // Backup & Security modal state
 const showBackupModal = ref(false);
@@ -5123,10 +5279,15 @@ onMounted(async () => {
 
   window.addEventListener('beforeprint', () => { 
     isPrinting.value = true;
-    updatePageOrientationStyle(printOrientation.value);
+    if (showHelpModal.value) {
+      updatePageOrientationStyle('portrait');
+    } else {
+      updatePageOrientationStyle(printOrientation.value);
+    }
   });
   window.addEventListener('afterprint', () => { isPrinting.value = false; });
   window.addEventListener('paste', handleGlobalPaste);
+  window.addEventListener('keydown', handleGlobalKeydown);
 
   await Promise.all([
     statusStore.loadSocialStatuses(),
@@ -5137,9 +5298,36 @@ onMounted(async () => {
   if (selectedCampaignId.value) {
     await beneficiaryStore.fetchData(selectedCampaignId.value);
   }
+
+  // Graceful splashscreen transition: reveal main window after data has loaded
+  setTimeout(async () => {
+    isInitialLoading.value = false;
+    try {
+      if (window.__TAURI__) {
+        const invoke = window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
+        if (invoke) {
+          await invoke('close_splashscreen');
+        }
+      }
+    } catch (e) {
+      console.warn('Splashscreen dismiss notice:', e);
+    }
+  }, 1000);
 });
+
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape' && isInitialLoading.value) {
+    dismissInAppSplash();
+    return;
+  }
+  if (e.key === 'F1') {
+    e.preventDefault();
+    showHelpModal.value = !showHelpModal.value;
+  }
+};
 
 onBeforeUnmount(() => {
   window.removeEventListener('paste', handleGlobalPaste);
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 </script>
