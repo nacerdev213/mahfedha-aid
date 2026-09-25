@@ -1,5 +1,5 @@
 <template>
-  <div dir="rtl" class="h-screen overflow-hidden flex flex-col p-3 sm:p-4 max-w-7xl mx-auto md:pr-20 print:h-auto print:overflow-visible print:p-0 print:m-0">
+  <div dir="rtl" class="h-screen overflow-hidden flex flex-col p-3 sm:p-4 w-full max-w-[1720px] mx-auto md:pr-20 print:h-auto print:overflow-visible print:p-0 print:m-0">
     <!-- Action Header Toolbar (Single-line, slim & space-efficient) -->
     <header class="flex items-center justify-between gap-3 mb-2.5 no-print shrink-0">
       <!-- Right (RTL Start): Season Selector & Management -->
@@ -673,7 +673,7 @@
               </td>
               <td class="py-2 px-3">
                 <div class="flex items-center gap-1">
-                  <span v-if="getPriorityCategory(getPriorityScore(item)) === 'critical'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضرورية جداً</span>
+                  <span v-if="getPriorityCategory(getPriorityScore(item)) === 'critical'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 cursor-help" :title="getPriorityScoreTooltip(item)">قصوى</span>
                   <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'high'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضرورية</span>
                   <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'medium'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 cursor-help" :title="getPriorityScoreTooltip(item)">متوسطة</span>
                   <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضعيفة</span>
@@ -866,8 +866,8 @@
 
     <!-- Beneficiary Modal -->
     <div v-if="showModal"
-      class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 z-50">
+      <div class="bg-white rounded-3xl max-w-4xl sm:max-w-5xl w-full max-h-[92vh] flex flex-col p-5 sm:p-7 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
         <!-- Header -->
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 shrink-0">
           <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -1026,39 +1026,59 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">رقم الهاتف</label>
+              <label class="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
               <input v-model="form.phone" type="text" placeholder="06 / 05 / 07 ..."
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono" dir="ltr" />
+                class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono bg-white" dir="ltr" />
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">الحالة الاجتماعية</label>
+              <label class="block text-xs font-bold text-slate-700 mb-1">الحالة الاجتماعية *</label>
               <select v-model="form.social_status"
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium">
                 <option v-for="s in socialStatuses" :key="s.id" :value="s.name">{{ s.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">الحالة العائلية (نقاط الأولوية)</label>
+              <select v-model="form.marital_status"
+                class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium">
+                <option value="متزوج">متزوج(ة)</option>
+                <option value="أرمل">أرمل(ة)</option>
+                <option value="إهمال">إهمال عائلي</option>
+                <option value="مطلق">مطلق(ة)</option>
+                <option value="أعزب">أعزب - عزباء</option>
+                <option value="أخرى">حالات أخرى</option>
               </select>
             </div>
           </div>
 
           <!-- Bag Breakdown -->
-          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <span class="block text-xs font-bold text-slate-700 mb-2">إحصاء المحافظ حسب الأطوار التعليمية:</span>
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1 text-center">ابتدائي</label>
+          <div class="bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span>🎒</span>
+                <span>إحصاء المحافظ حسب الأطوار التعليمية:</span>
+              </span>
+              <span class="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full font-mono">
+                المجموع: {{ (Number(form.primary_count) || 0) + (Number(form.middle_count) || 0) + (Number(form.secondary_count) || 0) }} محفظة
+              </span>
+            </div>
+            <div class="grid grid-cols-3 gap-2.5 sm:gap-4">
+              <div class="bg-white p-2.5 rounded-xl border border-emerald-200 shadow-2xs text-center">
+                <label class="block text-xs font-bold text-emerald-800 mb-1">🌱 طور الابتدائي</label>
                 <input v-model.number="form.primary_count" type="number" min="0"
-                  class="w-full text-center text-sm font-bold border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" />
+                  class="w-full text-center text-sm font-black font-mono border border-emerald-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-emerald-50/20 text-emerald-950" />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1 text-center">متوسط</label>
+              <div class="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs text-center">
+                <label class="block text-xs font-bold text-amber-800 mb-1">📘 طور المتوسط</label>
                 <input v-model.number="form.middle_count" type="number" min="0"
-                  class="w-full text-center text-sm font-bold border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" />
+                  class="w-full text-center text-sm font-black font-mono border border-amber-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-amber-50/20 text-amber-950" />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1 text-center">ثانوي</label>
+              <div class="bg-white p-2.5 rounded-xl border border-sky-200 shadow-2xs text-center">
+                <label class="block text-xs font-bold text-sky-800 mb-1">🎓 طور الثانوي</label>
                 <input v-model.number="form.secondary_count" type="number" min="0"
-                  class="w-full text-center text-sm font-bold border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" />
+                  class="w-full text-center text-sm font-black font-mono border border-sky-300 rounded-lg p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-sky-50/20 text-sky-950" />
               </div>
             </div>
           </div>
@@ -1099,7 +1119,7 @@
                     class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs cursor-help"
                     :title="getPriorityScoreTooltip(form)"
                   >
-                    ضرورية جداً ({{ getPriorityScore(form) }}ن)
+                    قصوى ({{ getPriorityScore(form) }}ن)
                   </span>
                   <span 
                     v-else-if="getPriorityCategory(getPriorityScore(form)) === 'high'" 
@@ -1176,25 +1196,11 @@
                 </div>
               </div>
 
-              <!-- Row 3: Marital status & Spouse name -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block font-bold text-slate-600 mb-1">الحالة العائلية</label>
-                  <select v-model="form.marital_status"
-                    class="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                    <option value="متزوج">متزوج(ة)</option>
-                    <option value="أعزب">أعزب - عزباء</option>
-                    <option value="أرمل">أرمل(ة)</option>
-                    <option value="مطلق">مطلق(ة)</option>
-                    <option value="إهمال">إهمال عائلي</option>
-                    <option value="أخرى">حالات أخرى</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold text-slate-600 mb-1">لقب وإسم الزوج(ة)</label>
-                  <input v-model="form.spouse_name" type="text" placeholder="اسم الزوج(ة)"
-                    class="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                </div>
+              <!-- Row 3: Spouse name -->
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">لقب وإسم الزوج(ة)</label>
+                <input v-model="form.spouse_name" type="text" placeholder="اسم ولقب الزوج(ة)"
+                  class="w-full text-xs sm:text-sm border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium" />
               </div>
 
               <!-- Row 4: Address -->
@@ -1568,326 +1574,376 @@
     <!-- Organization Settings Modal -->
     <div v-if="showSettingsModal"
       class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-right">
+      <div class="bg-white rounded-2xl max-w-4xl sm:max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-right">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/90 shrink-0">
           <div>
-            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              ⚙️ إعدادات الجمعية ونظام الأولويات
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>⚙️</span>
+              <span>إعدادات النظام والأولويات</span>
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">ضبط هوية الجمعية للطباعة، نقاط الحالة العائلية، وعتبات تصنيف الحالات الأربعة</p>
+            <p class="text-xs text-slate-500 mt-0.5">تخصيص هوية الجمعية، معايير نقاط الحالة العائلية والمتمدرسين، وعتبات تصنيف الاستحقاق</p>
           </div>
-          <button @click="showSettingsModal = false" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">✕</button>
+          <button @click="showSettingsModal = false" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer p-1 rounded-lg hover:bg-slate-200/60 transition">✕</button>
+        </div>
+
+        <!-- Segmented Tab Navigation -->
+        <div class="flex items-center gap-2 px-6 pt-3 pb-2.5 bg-slate-100/70 border-b border-slate-200 shrink-0">
+          <button 
+            type="button" 
+            @click="activeSettingsTab = 'org'" 
+            :class="activeSettingsTab === 'org' 
+              ? 'bg-white text-indigo-700 shadow-xs border-indigo-200 font-bold' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold border-transparent'"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
+          >
+            <span class="text-base">🏢</span>
+            <span>معلومات وهوية الجمعية</span>
+          </button>
+
+          <button 
+            type="button" 
+            @click="activeSettingsTab = 'priority'" 
+            :class="activeSettingsTab === 'priority' 
+              ? 'bg-white text-indigo-700 shadow-xs border-indigo-200 font-bold' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold border-transparent'"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm transition cursor-pointer"
+          >
+            <span class="text-base">🎯</span>
+            <span>نظام التنقيط ومعايير الأولوية</span>
+          </button>
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="overflow-y-auto p-6 space-y-6 flex-1 text-xs">
-          <!-- Section 1: Official Org Identity -->
-          <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">اسم الجمعية الخيرية *</label>
-            <input v-model="settingsForm.org_name" type="text"
-              class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">الفرع / المكتب</label>
-              <input v-model="settingsForm.branch_name" type="text" placeholder="المكتب الولائي / البلدي"
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <div class="overflow-y-auto p-5 sm:p-7 flex-1 text-xs">
+          <!-- TAB 1: Organization & Identity Settings -->
+          <div v-if="activeSettingsTab === 'org'" class="space-y-5 animate-in fade-in duration-150">
+            <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-3 text-slate-700 flex items-center gap-2 text-xs">
+              <span class="text-lg">ℹ️</span>
+              <span>تُستخدم هذه البيانات في ترويسة وتذييل كافة المحاضر والاستمارات الرسمية المطبوعة تلقائياً.</span>
             </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">الولاية</label>
-              <input v-model="settingsForm.wilaya" type="text" placeholder="مثال: قسنطينة"
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">البلدية</label>
-              <input v-model="settingsForm.commune" type="text" placeholder="مثال: الخروب"
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">رقم الهاتف للتواصل</label>
-              <input v-model="settingsForm.phone" type="text" placeholder="مثال: 0550123456"
-                class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">نص تذييل الوثائق الرسمية المطبوعة</label>
-            <textarea v-model="settingsForm.footer_text" rows="2"
-              class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
-          </div>
-          </div>
 
-          <!-- Section 2: Marital Status Priority Points -->
-          <div class="space-y-3 pt-4 border-t border-slate-100">
-            <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                <span>👨‍👩‍👧‍👦</span>
-                <span>نقاط الحالة العائلية (تُحتسب تلقائياً في رصيد الأولوية)</span>
-              </h4>
-              <span class="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
-                تضاف إلى رصيد الأسرة
-              </span>
-            </div>
-            <p class="text-[11px] text-slate-500 leading-relaxed">
-              تُمنح هذه النقاط للأسرة تلقائياً حسب الحالة العائلية لرب الأسرة أو المستفيد المسجل في الاستمارة:
-            </p>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <!-- Widow -->
-              <div class="bg-rose-50/50 border border-rose-200/80 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-rose-900 block text-xs">أرمل / أرملة</span>
-                  <span class="text-[10px] text-rose-600">أرمل(ة) / أيتام</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_widow" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-rose-700 font-bold">ن</span>
-                </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">اسم الجمعية أو المؤسسة الخيرية *</label>
+                <input v-model="settingsForm.org_name" type="text"
+                  placeholder="مثال: جمعية سبل الخيرات الخيرية"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium"
+                  required />
               </div>
 
-              <!-- Deserted / Family Abandonment -->
-              <div class="bg-amber-50/50 border border-amber-200/80 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-amber-900 block text-xs">إهمال عائلي</span>
-                  <span class="text-[10px] text-amber-600">هجر أو إهمال</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_deserted" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-amber-700 font-bold">ن</span>
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">الفرع / المكتب</label>
+                <input v-model="settingsForm.branch_name" type="text" placeholder="مثال: المكتب الولائي / البلدي"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium" />
               </div>
 
-              <!-- Divorced -->
-              <div class="bg-orange-50/50 border border-orange-200/80 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-orange-900 block text-xs">مطلق / مطلقة</span>
-                  <span class="text-[10px] text-orange-600">حضانة منفردة</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_divorced" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-orange-700 font-bold">ن</span>
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">رقم الهاتف للتواصل والاستفسارات</label>
+                <input v-model="settingsForm.phone" type="text" placeholder="مثال: 0550123456" dir="ltr"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-mono" />
               </div>
 
-              <!-- Married -->
-              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-slate-800 block text-xs">متزوج / متزوجة</span>
-                  <span class="text-[10px] text-slate-500">كلا الوالدين</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_married" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">الولاية</label>
+                <input v-model="settingsForm.wilaya" type="text" placeholder="مثال: قسنطينة"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium" />
               </div>
 
-              <!-- Single -->
-              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-slate-800 block text-xs">أعزب / عزباء</span>
-                  <span class="text-[10px] text-slate-500">كفيل غير متزوج</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_single" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">البلدية</label>
+                <input v-model="settingsForm.commune" type="text" placeholder="مثال: الخروب"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium" />
               </div>
 
-              <!-- Other -->
-              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-                <div>
-                  <span class="font-bold text-slate-800 block text-xs">حالات أخرى</span>
-                  <span class="text-[10px] text-slate-500">وضع عائلي خاص</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <input 
-                    v-model.number="settingsForm.marital_points_other" 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
-                </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">نص تذييل الوثائق والمحاضر المطبوعة</label>
+                <textarea v-model="settingsForm.footer_text" rows="3"
+                  placeholder="نص يظهر في أسفل الاستمارات والمحاضر (مثال: الشروط والأحكام أو عبارات التبرع)"
+                  class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"></textarea>
               </div>
             </div>
           </div>
-          <div class="pt-2 border-t border-slate-100">
-            <label class="block text-xs font-bold text-indigo-700 mb-1 flex items-center gap-1.5">
-              <span>🎯</span>
-              <span>نقاط الأبناء المتمدرسين</span>
-            </label>
-            <div class="flex items-center gap-3">
-              <input 
-                v-model.number="settingsForm.student_priority_points" 
-                type="number" 
-                min="0"
-                max="100"
-                placeholder="5"
-                class="w-28 text-sm font-bold font-mono text-center border border-indigo-200 bg-indigo-50/30 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
-              />
-              <span class="text-xs text-slate-500">
-                نقاط إضافية تُمنح عن <strong>كل ابن متمدرس</strong> (ابتدائي، متوسط، ثانوي) مسجل في الاستمارة (الافتراضي: 5 نقاط لكل تلميذ).
-              </span>
-            </div>
-          </div>
-          <!-- Section 4: Priority Level Thresholds (عتبات تصنيف الحالات الأربعة) -->
-          <div class="space-y-3 pt-4 border-t border-slate-100">
-            <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                <span>🎯</span>
-                <span>عتبات تصنيف الأولويات الأربعة (حدود الانتقال بين الحالات)</span>
-              </h4>
-              <span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
-                4 مستويات
-              </span>
-            </div>
-            <p class="text-[11px] text-slate-500 leading-relaxed">
-              يتم تصنيف الأسرة آلياً ضمن أحد المستويات الأربعة استناداً إلى مجموع النقاط مقارنة بالعتبات التالية:
-            </p>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <!-- Critical Threshold -->
-              <div class="bg-rose-50/60 border border-rose-200 rounded-xl p-3">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                    🔴 ضرورية جداً
-                  </span>
-                  <span class="text-[10px] text-rose-600 font-bold">حرجة جداً</span>
+          <!-- TAB 2: Scoring System & Priority Thresholds -->
+          <div v-else class="space-y-6 animate-in fade-in duration-150">
+            <!-- 1. Student points -->
+            <div class="bg-gradient-to-r from-indigo-50/60 to-slate-50 border border-indigo-100 rounded-2xl p-4">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="font-bold text-sm text-indigo-950 flex items-center gap-2">
+                    <span class="text-base">🎒</span>
+                    <span>نقاط الأبناء المتمدرسين</span>
+                  </div>
+                  <p class="text-xs text-slate-500">
+                    نقاط تُمنح عن <strong>كل ابن متمدرس</strong> (ابتدائي، متوسط، ثانوي) مسجل في ملف الأسرة.
+                  </p>
                 </div>
-                <div class="flex items-center gap-1.5 mt-2">
-                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
+                <div class="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl px-3 py-1.5 shadow-2xs shrink-0">
                   <input 
-                    v-model.number="settingsForm.priority_threshold_critical" 
+                    v-model.number="settingsForm.student_priority_points" 
                     type="number" 
-                    min="1" 
-                    max="500" 
-                    class="w-full text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1.5 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                    min="0"
+                    max="100"
+                    class="w-16 text-sm font-black font-mono text-center border border-indigo-300 bg-indigo-50/30 rounded-lg py-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-indigo-900" 
                   />
-                  <span class="text-xs text-rose-800 font-bold">نقطة</span>
+                  <span class="text-xs font-bold text-indigo-900">نقاط / تلميذ</span>
                 </div>
-                <p class="text-[10px] text-rose-700 mt-1.5">
-                  كل أسرة نقاطها {{ settingsForm.priority_threshold_critical }} أو أكثر.
-                </p>
-              </div>
-
-              <!-- High Threshold -->
-              <div class="bg-orange-50/60 border border-orange-200 rounded-xl p-3">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
-                    🟠 ضرورية
-                  </span>
-                  <span class="text-[10px] text-orange-600 font-bold">عالية</span>
-                </div>
-                <div class="flex items-center gap-1.5 mt-2">
-                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
-                  <input 
-                    v-model.number="settingsForm.priority_threshold_high" 
-                    type="number" 
-                    min="1" 
-                    max="500" 
-                    class="w-full text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1.5 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                  />
-                  <span class="text-xs text-orange-800 font-bold">نقطة</span>
-                </div>
-                <p class="text-[10px] text-orange-700 mt-1.5">
-                  بين {{ settingsForm.priority_threshold_high }} و {{ (settingsForm.priority_threshold_critical || 60) - 1 }} نقطة.
-                </p>
-              </div>
-
-              <!-- Medium Threshold -->
-              <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    🟡 متوسطة
-                  </span>
-                  <span class="text-[10px] text-amber-600 font-bold">متوسطة الأهمية</span>
-                </div>
-                <div class="flex items-center gap-1.5 mt-2">
-                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
-                  <input 
-                    v-model.number="settingsForm.priority_threshold_medium" 
-                    type="number" 
-                    min="1" 
-                    max="500" 
-                    class="w-full text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1.5 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                  />
-                  <span class="text-xs text-amber-800 font-bold">نقطة</span>
-                </div>
-                <p class="text-[10px] text-amber-700 mt-1.5">
-                  بين {{ settingsForm.priority_threshold_medium }} و {{ (settingsForm.priority_threshold_high || 45) - 1 }} نقطة.
-                </p>
               </div>
             </div>
 
-            <!-- Fourth Category: Low (automatic) -->
-            <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  🟢 ضعيفة / منخفضة
-                </span>
-                <span class="text-[11px] text-emerald-800">
-                  الحالة الرابعة وتُمنح تلقائياً لأي أسرة يقل مجموع نقاطها عن عتبة المتوسطة (&lt; {{ settingsForm.priority_threshold_medium }} نقطة).
+            <!-- 2. Marital status points -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>👨‍👩‍👧‍👦</span>
+                  <span>نقاط الحالة العائلية (تُحتسب تلقائياً في رصيد الأسرة)</span>
+                </h4>
+                <span class="text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold">
+                  تُضاف إلى الرصيد التراكمي
                 </span>
               </div>
-              <span class="font-mono font-bold text-emerald-700 bg-white border border-emerald-200 px-2 py-0.5 rounded text-xs shrink-0">
-                &lt; {{ settingsForm.priority_threshold_medium }}
-              </span>
+              <p class="text-xs text-slate-500">
+                تُمنح هذه النقاط تلقائياً لرب الأسرة المسجل بناءً على حالته العائلية المدخلة:
+              </p>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <!-- Widow -->
+                <div class="bg-rose-50/60 border border-rose-200/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-rose-950 block text-xs">أرمل / أرملة</span>
+                    <span class="text-[10px] text-rose-600">أرمل(ة) / أيتام</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_widow" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-rose-700 font-bold">ن</span>
+                  </div>
+                </div>
+
+                <!-- Deserted -->
+                <div class="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-amber-950 block text-xs">إهمال عائلي</span>
+                    <span class="text-[10px] text-amber-600">هجر أو إهمال</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_deserted" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-amber-700 font-bold">ن</span>
+                  </div>
+                </div>
+
+                <!-- Divorced -->
+                <div class="bg-orange-50/60 border border-orange-200/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-orange-950 block text-xs">مطلق / مطلقة</span>
+                    <span class="text-[10px] text-orange-600">حضانة منفردة</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_divorced" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-orange-700 font-bold">ن</span>
+                  </div>
+                </div>
+
+                <!-- Married -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-slate-800 block text-xs">متزوج / متزوجة</span>
+                    <span class="text-[10px] text-slate-500">كلا الوالدين</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_married" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-slate-600 font-bold">ن</span>
+                  </div>
+                </div>
+
+                <!-- Single -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-slate-800 block text-xs">أعزب / عزباء</span>
+                    <span class="text-[10px] text-slate-500">كفيل غير متزوج</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_single" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-slate-600 font-bold">ن</span>
+                  </div>
+                </div>
+
+                <!-- Other -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <span class="font-bold text-slate-800 block text-xs">حالات أخرى</span>
+                    <span class="text-[10px] text-slate-500">وضع عائلي خاص</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <input 
+                      v-model.number="settingsForm.marital_points_other" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-slate-600 font-bold">ن</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- Order validation warning if configured incorrectly -->
-            <div 
-              v-if="(Number(settingsForm.priority_threshold_critical) <= Number(settingsForm.priority_threshold_high)) || (Number(settingsForm.priority_threshold_high) <= Number(settingsForm.priority_threshold_medium))" 
-              class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] flex items-center gap-2 font-bold"
-            >
-              <span>⚠️ تنبيه في الترتيب:</span>
-              <span>يجب أن تكون عتبة (ضرورية جداً) أكبر من عتبة (ضرورية)، وعتبة (ضرورية) أكبر من عتبة (متوسطة) لضمان دقة التصنيف.</span>
+            <!-- 3. Category thresholds -->
+            <div class="space-y-3 pt-3 border-t border-slate-200/80">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>🎯</span>
+                  <span>عتبات تصنيف الأولويات الأربعة (حدود الانتقال بين الفئات)</span>
+                </h4>
+                <span class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold">
+                  4 مستويات استحقاق
+                </span>
+              </div>
+              <p class="text-xs text-slate-500">
+                يتم تصنيف الأسرة آلياً ضمن أحد المستويات الأربعة استناداً إلى مجموع النقاط مقارنة بالعتبات التالية:
+              </p>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <!-- Critical Threshold -->
+                <div class="bg-rose-50/70 border border-rose-200 rounded-2xl p-3.5 shadow-2xs">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                      🔴 قصوى
+                    </span>
+                    <span class="text-[10px] text-rose-600 font-bold">أعلى أولوية</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-2">
+                    <span class="text-xs text-slate-700 font-bold">العتبة ≥</span>
+                    <input 
+                      v-model.number="settingsForm.priority_threshold_critical" 
+                      type="number" 
+                      min="1" 
+                      max="500" 
+                      class="w-full text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1.5 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-rose-800 font-bold">نقطة</span>
+                  </div>
+                  <p class="text-[11px] text-rose-700 mt-2">
+                    كل أسرة نقاطها {{ settingsForm.priority_threshold_critical }} أو أكثر.
+                  </p>
+                </div>
+
+                <!-- High Threshold -->
+                <div class="bg-orange-50/70 border border-orange-200 rounded-2xl p-3.5 shadow-2xs">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300">
+                      🟠 ضرورية
+                    </span>
+                    <span class="text-[10px] text-orange-600 font-bold">عالية</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-2">
+                    <span class="text-xs text-slate-700 font-bold">العتبة ≥</span>
+                    <input 
+                      v-model.number="settingsForm.priority_threshold_high" 
+                      type="number" 
+                      min="1" 
+                      max="500" 
+                      class="w-full text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1.5 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-orange-800 font-bold">نقطة</span>
+                  </div>
+                  <p class="text-[11px] text-orange-700 mt-2">
+                    بين {{ settingsForm.priority_threshold_high }} و {{ (settingsForm.priority_threshold_critical || 60) - 1 }} نقطة.
+                  </p>
+                </div>
+
+                <!-- Medium Threshold -->
+                <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 shadow-2xs">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      🟡 متوسطة
+                    </span>
+                    <span class="text-[10px] text-amber-600 font-bold">متوسطة</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-2">
+                    <span class="text-xs text-slate-700 font-bold">العتبة ≥</span>
+                    <input 
+                      v-model.number="settingsForm.priority_threshold_medium" 
+                      type="number" 
+                      min="1" 
+                      max="500" 
+                      class="w-full text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1.5 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    />
+                    <span class="text-xs text-amber-800 font-bold">نقطة</span>
+                  </div>
+                  <p class="text-[11px] text-amber-700 mt-2">
+                    بين {{ settingsForm.priority_threshold_medium }} و {{ (settingsForm.priority_threshold_high || 45) - 1 }} نقطة.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Low Category -->
+              <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                    🟢 ضعيفة / منخفضة
+                  </span>
+                  <span class="text-xs text-emerald-900">
+                    تُمنح تلقائياً لأي أسرة يقل مجموع نقاطها عن عتبة المتوسطة (&lt; {{ settingsForm.priority_threshold_medium }} نقطة).
+                  </span>
+                </div>
+                <span class="font-mono font-bold text-emerald-800 bg-white border border-emerald-300 px-3 py-1 rounded-xl text-xs shrink-0">
+                  &lt; {{ settingsForm.priority_threshold_medium }} نقطة
+                </span>
+              </div>
+
+              <!-- Order validation warning if configured incorrectly -->
+              <div 
+                v-if="(Number(settingsForm.priority_threshold_critical) <= Number(settingsForm.priority_threshold_high)) || (Number(settingsForm.priority_threshold_high) <= Number(settingsForm.priority_threshold_medium))" 
+                class="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs flex items-center gap-2 font-bold shadow-2xs"
+              >
+                <span class="text-base">⚠️</span>
+                <span>تنبيه في الترتيب: يجب أن تكون عتبة (قصوى) أكبر من عتبة (ضرورية)، وعتبة (ضرورية) أكبر من عتبة (متوسطة) لضمان دقة التصنيف.</span>
+              </div>
             </div>
           </div>
         </div>
+
         <!-- Modal Footer -->
-        <div class="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 shrink-0">
+        <div class="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50/90 shrink-0">
           <button @click="showSettingsModal = false"
-            class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+            class="px-5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/70 rounded-xl transition cursor-pointer">
             إلغاء
           </button>
           <button @click="saveSettings"
-            class="px-5 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs transition cursor-pointer">
-            حفظ الإعدادات والتنقيط
+            class="px-6 py-2.5 text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition cursor-pointer active:scale-95 flex items-center gap-2">
+            <span>💾</span>
+            <span>حفظ الإعدادات والتنقيط</span>
           </button>
         </div>
       </div>
@@ -2286,7 +2342,7 @@
     <!-- =========================================== -->
     <div v-if="showPrintCustomModal"
       class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 z-50 overflow-y-auto no-print">
-      <div class="bg-white rounded-2xl w-full max-w-2xl sm:max-w-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] m-auto overflow-hidden" dir="rtl">
+      <div class="bg-white rounded-3xl w-full max-w-4xl sm:max-w-5xl shadow-2xl border border-slate-200 flex flex-col max-h-[88vh] m-auto overflow-hidden" dir="rtl">
         <!-- Header (Fixed at top) -->
         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3 sm:px-6 bg-slate-50/80 shrink-0">
           <div class="flex items-center gap-2.5">
@@ -2413,32 +2469,59 @@
                     </div>
                   </label>
 
-                  <!-- NEW: Priority Ranked Scope (ترتيب تنازلي حسب النقاط مع حصر العدد من إلى) -->
+                  <!-- NEW: Simplified Priority Quota Scope (الأكثر استحقاقاً - الأعلى نقاطاً) -->
                   <label 
                     @click="printScope = 'priority_ranked'"
                     :class="printScope === 'priority_ranked' ? 'border-amber-500 bg-amber-50/50 font-bold text-slate-900 ring-1 ring-amber-400' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex flex-col p-2.5 rounded-xl border cursor-pointer transition text-xs gap-1.5"
+                    class="flex flex-col p-2.5 rounded-xl border cursor-pointer transition text-xs gap-2"
                   >
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2">
                         <input type="radio" value="priority_ranked" v-model="printScope" class="text-amber-600 focus:ring-amber-500" />
                         <span class="flex items-center gap-1.5 font-bold text-slate-900">
                           <span>🎯</span>
-                          <span>ترتيب تنازلي حسب نقاط الأولوية (الأعلى فالأقل)</span>
+                          <span>الأكثر استحقاقاً (تنازلياً من أعلى نقطة إلى أدنى نقطة)</span>
                         </span>
                       </div>
                       <span class="bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px] px-2 py-0.5 rounded-md font-bold">
-                        كوتا / حصة توزيع
+                        أولوية الاستفادة
                       </span>
                     </div>
 
-                    <!-- Ranked Controls (Visible when active) -->
-                    <div v-if="printScope === 'priority_ranked'" class="flex flex-col gap-2 pt-1 px-2 border-t border-amber-200/60 mt-1" @click.stop>
-                      <!-- Rank Inputs & Quick Presets -->
-                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                    <!-- Priority Controls (Visible when active) -->
+                    <div v-if="printScope === 'priority_ranked'" class="flex flex-col gap-2.5 pt-2 px-2 border-t border-amber-200/70" @click.stop>
+                      <!-- Main simple input: عدد المستفيدين الأكثر استحقاقاً -->
+                      <div v-if="!priorityUseBatch" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs">
+                        <div class="flex items-center gap-2">
+                          <span class="text-slate-800 font-bold text-xs whitespace-nowrap">عدد المستفيدين الأكثر استحقاقاً:</span>
+                          <div class="flex items-center gap-1">
+                            <input 
+                              type="number" 
+                              v-model.number="printRankTo" 
+                              min="1" 
+                              :max="printRankedEligibleTotal || 1"
+                              class="w-20 text-center font-mono font-black text-sm bg-amber-50/40 border border-amber-300 rounded-lg py-1 px-2 focus:ring-2 focus:ring-amber-500 focus:outline-none text-amber-950"
+                            />
+                            <span class="text-slate-500 text-xs font-bold">أول عائلة</span>
+                          </div>
+                        </div>
+
+                        <!-- Quick Presets -->
+                        <div class="flex items-center gap-1 justify-end shrink-0 flex-wrap">
+                          <span class="text-[10px] text-slate-500">اختيار سريع:</span>
+                          <button type="button" @click="setPriorityQuota(5)" :class="printRankTo === 5 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">5</button>
+                          <button type="button" @click="setPriorityQuota(10)" :class="printRankTo === 10 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">10</button>
+                          <button type="button" @click="setPriorityQuota(20)" :class="printRankTo === 20 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">20</button>
+                          <button type="button" @click="setPriorityQuota(50)" :class="printRankTo === 50 && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-mono cursor-pointer transition">50</button>
+                          <button type="button" @click="setPriorityQuota(printRankedEligibleTotal)" :class="printRankTo >= printRankedEligibleTotal && printRankFrom === 1 ? 'bg-amber-600 text-white font-bold' : 'bg-slate-100 hover:bg-amber-100 text-slate-700'" class="px-2 py-0.5 rounded border border-slate-200 text-[11px] font-bold cursor-pointer transition">الكل ({{ printRankedEligibleTotal }})</button>
+                        </div>
+                      </div>
+
+                      <!-- Batch mode (من مستفيد إلى مستفيد) -->
+                      <div v-else class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs">
                         <div class="flex items-center gap-2 flex-1">
                           <div class="flex items-center gap-1.5 flex-1">
-                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">من الرتبة:</span>
+                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">من المستفيد رقم:</span>
                             <input 
                               type="number" 
                               v-model.number="printRankFrom" 
@@ -2448,7 +2531,7 @@
                             />
                           </div>
                           <div class="flex items-center gap-1.5 flex-1">
-                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">إلى الرتبة:</span>
+                            <span class="text-slate-700 font-bold text-xs whitespace-nowrap">إلى المستفيد رقم:</span>
                             <input 
                               type="number" 
                               v-model.number="printRankTo" 
@@ -2458,24 +2541,25 @@
                             />
                           </div>
                         </div>
-
-                        <!-- Quick Presets -->
-                        <div class="flex items-center gap-1 justify-end shrink-0">
-                          <span class="text-[10px] text-slate-500">حصة سريعة:</span>
-                          <button type="button" @click="setRankPreset(1, 20)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">20</button>
-                          <button type="button" @click="setRankPreset(1, 50)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">50</button>
-                          <button type="button" @click="setRankPreset(1, 100)" class="px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold cursor-pointer transition">100</button>
-                          <button type="button" @click="setRankPreset(1, printRankedEligibleTotal)" class="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold cursor-pointer transition">الكل ({{ printRankedEligibleTotal }})</button>
-                        </div>
                       </div>
 
-                      <!-- Priority Categories Filter -->
-                      <div class="flex items-center justify-between gap-1 flex-wrap pt-1 border-t border-amber-100 text-[11px]">
-                        <span class="text-slate-600 font-bold text-[10px]">حصر الفئات:</span>
-                        <div class="flex items-center gap-2 flex-wrap">
+                      <!-- Sub-controls: Toggle batch mode + Categories filter -->
+                      <div class="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                        <!-- Batch toggle button -->
+                        <button 
+                          type="button" 
+                          @click="togglePriorityBatch" 
+                          class="text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 underline cursor-pointer text-[11px]"
+                        >
+                          <span>{{ priorityUseBatch ? '↩ العودة للتحديد البسيط (أول X مستفيد)' : '🔢 توزيع على دفعات؟ (من مستفيد إلى مستفيد)' }}</span>
+                        </button>
+
+                        <!-- Categories filter -->
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="text-slate-500 font-medium text-[10px]">فئات الاستحقاق:</span>
                           <label class="flex items-center gap-1 cursor-pointer">
                             <input type="checkbox" value="critical" v-model="printRankedCategories" class="text-rose-600 focus:ring-rose-500 rounded" />
-                            <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية جداً</span>
+                            <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">قصوى</span>
                           </label>
                           <label class="flex items-center gap-1 cursor-pointer">
                             <input type="checkbox" value="high" v-model="printRankedCategories" class="text-orange-600 focus:ring-orange-500 rounded" />
@@ -2492,71 +2576,18 @@
                         </div>
                       </div>
 
-                      <!-- Live Smart Preview Card -->
-                      <div v-if="printTargetBeneficiaries.length > 0" class="bg-amber-100/80 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-2 mt-0.5">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span>📊 <strong>النطاق المشمول:</strong></span>
-                          <span>الرتبة #{{ printRankFrom }} ({{ printRankedPreviewStats.topScore }}ن) ⬅️ الرتبة #{{ Math.min(printRankTo, printRankFrom + printTargetBeneficiaries.length - 1) }} ({{ printRankedPreviewStats.lowScore }}ن)</span>
-                        </div>
+                      <!-- Live Smart Summary Card -->
+                      <div v-if="printTargetBeneficiaries.length > 0" class="bg-amber-100/90 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
                         <div class="flex items-center gap-2">
-                          <span>🎒 <strong>المحافظ المطلوبة:</strong> <span class="font-black text-xs text-amber-900 font-mono">{{ printRankedPreviewStats.totalBags }}</span></span>
+                          <span class="text-base">📋</span>
+                          <span>
+                            سيتم طباعة <strong>{{ printTargetBeneficiaries.length }} عائلة</strong> 
+                            ({{ printRankedPreviewStats.topScore }} إلى {{ printRankedPreviewStats.lowScore }} نقطة)
+                          </span>
                         </div>
-                      </div>
-                    </div>
-                  </label>
-
-                  <!-- Priority Range -->
-                  <label 
-                    @click="printScope = 'priority'"
-                    :class="printScope === 'priority' ? 'border-indigo-400 bg-indigo-50/40 font-bold text-slate-900' : 'border-slate-200 hover:bg-slate-50 text-slate-700'"
-                    class="flex flex-col p-2 rounded-xl border cursor-pointer transition text-xs gap-1.5"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <input type="radio" value="priority" v-model="printScope" class="text-indigo-600 focus:ring-indigo-500" />
-                        <span>حسب الأولوية + نطاق أرقام</span>
-                      </div>
-                      <span class="text-indigo-600 text-[10px] font-mono">نقاط الأولوية</span>
-                    </div>
-
-                    <!-- Priority & Range Inputs -->
-                    <div v-if="printScope === 'priority'" class="flex flex-col gap-2 pt-1 px-3" @click.stop>
-                      <div class="flex items-center gap-2 flex-wrap">
-                        <label class="flex items-center gap-1 cursor-pointer">
-                          <input type="checkbox" value="critical" v-model="printSelectedPriorities" class="text-rose-600 focus:ring-rose-500" />
-                          <span class="text-rose-800 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية جداً</span>
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer">
-                          <input type="checkbox" value="high" v-model="printSelectedPriorities" class="text-orange-600 focus:ring-orange-500" />
-                          <span class="text-orange-800 font-bold bg-orange-100 px-1.5 py-0.5 rounded text-[10px]">ضرورية</span>
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer">
-                          <input type="checkbox" value="medium" v-model="printSelectedPriorities" class="text-amber-600 focus:ring-amber-500" />
-                          <span class="text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">متوسطة</span>
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer">
-                          <input type="checkbox" value="low" v-model="printSelectedPriorities" class="text-emerald-600 focus:ring-emerald-500" />
-                          <span class="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">ضعيفة</span>
-                        </label>
-                      </div>
-                      <div class="flex items-center gap-2 mt-1">
-                        <div class="flex items-center gap-1.5 flex-1">
-                          <span class="text-slate-600 font-bold text-xs">من:</span>
-                          <input 
-                            type="number" 
-                            v-model.number="printRangeFrom" 
-                            min="1" 
-                            class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
-                          />
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-1">
-                          <span class="text-slate-600 font-bold text-xs">إلى:</span>
-                          <input 
-                            type="number" 
-                            v-model.number="printRangeTo" 
-                            min="1" 
-                            class="w-full text-center font-mono font-bold bg-white border border-slate-300 rounded-lg py-1 px-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"
-                          />
+                        <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                          <span class="text-slate-600 font-bold">🎒 المحافظ المطلوبة لهم:</span>
+                          <span class="font-black text-sm text-amber-900 font-mono">{{ printRankedPreviewStats.totalBags }}</span>
                         </div>
                       </div>
                     </div>
@@ -2679,8 +2710,7 @@
                         printScope === 'all' ? 'جميع المسجلين' :
                         printScope === 'selected' ? `محدد (${selectedBeneficiaryIds.length})` :
                         printScope === 'range' ? `أرقام (${printRangeFrom}-${printRangeTo})` :
-                        printScope === 'priority' ? 'فئات الأولوية' :
-                        printScope === 'priority_ranked' ? `أولوية تنازلية (#${printRankFrom}-#${printRankTo})` :
+                        printScope === 'priority_ranked' ? (printRankFrom === 1 ? `الأكثر استحقاقاً (أول ${printRankTo})` : `الأكثر استحقاقاً (${printRankFrom}-${printRankTo})`) :
                         'استمارة فارغة'
                       }}
                     </strong>
@@ -3215,7 +3245,10 @@ const printTotalBags = computed(() => {
 
 const printReportTitle = computed(() => {
   if (printScope.value === 'priority_ranked') {
-    return `محضر توزيع الحقائب (حسب نقاط الأولوية: الرتبة ${printRankFrom.value} إلى ${printRankTo.value})`;
+    if (Number(printRankFrom.value) === 1) {
+      return `محضر توزيع الحقائب (الأكثر استحقاقاً: أول ${printRankTo.value} مستفيد)`;
+    }
+    return `محضر توزيع الحقائب (الأكثر استحقاقاً: من ${printRankFrom.value} إلى ${printRankTo.value})`;
   }
   if (deliveryFilter.value === 'delivered') {
     return 'محضر تسليم الحقائب المدرسية (المستلمين)';
@@ -3404,7 +3437,21 @@ const printRangeFrom = ref(1);
 const printRangeTo = ref(100);
 const printRankFrom = ref(1);
 const printRankTo = ref(50);
+const priorityUseBatch = ref(false);
 const printRankedCategories = ref(['critical', 'high', 'medium', 'low']);
+
+const setPriorityQuota = (count) => {
+  printRankFrom.value = 1;
+  printRankTo.value = Math.max(1, Number(count) || 1);
+};
+
+const togglePriorityBatch = () => {
+  priorityUseBatch.value = !priorityUseBatch.value;
+  if (!priorityUseBatch.value) {
+    printRankFrom.value = 1;
+  }
+};
+
 const setRankPreset = (from, to) => {
   printRankFrom.value = Math.max(1, Number(from) || 1);
   printRankTo.value = Math.max(printRankFrom.value, Number(to) || 1);
@@ -3684,7 +3731,11 @@ const bulkDeliver = async (isDelivered) => {
 };
 
 // Organization Settings Methods
-const openSettingsModal = () => orgStore.openSettingsModal();
+const activeSettingsTab = ref('org'); // 'org' | 'priority'
+const openSettingsModal = () => {
+  activeSettingsTab.value = 'org';
+  orgStore.openSettingsModal();
+};
 const saveSettings = async () => {
   try {
     await orgStore.saveOrgSettings();
@@ -4438,6 +4489,7 @@ const openCustomPrintModal = async (type = 'list') => {
 
     printRankFrom.value = 1;
     printRankTo.value = Math.min(50, Math.max(fullBeneficiariesForPrint.value.length, 1));
+    priorityUseBatch.value = false;
   }
   showPrintCustomModal.value = true;
 };
