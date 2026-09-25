@@ -664,10 +664,10 @@
               </td>
               <td class="py-2 px-3">
                 <div class="flex items-center gap-1">
-                  <span v-if="getPriorityCategory(getPriorityScore(item)) === 'critical'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضرورية جداً</span>
-                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'high'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضرورية</span>
-                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'medium'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">متوسطة</span>
-                  <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" :title="`المجموع: ${getPriorityScore(item)} نقطة`">ضعيفة</span>
+                  <span v-if="getPriorityCategory(getPriorityScore(item)) === 'critical'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضرورية جداً</span>
+                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'high'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضرورية</span>
+                  <span v-else-if="getPriorityCategory(getPriorityScore(item)) === 'medium'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 cursor-help" :title="getPriorityScoreTooltip(item)">متوسطة</span>
+                  <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-help" :title="getPriorityScoreTooltip(item)">ضعيفة</span>
                   <span v-if="Number(item.extra_priority_points) > 0" class="text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold font-mono" :title="`نقاط استثنائية إضافية: +${item.extra_priority_points}`">
                     +{{ item.extra_priority_points }}⭐
                   </span>
@@ -1084,25 +1084,29 @@
                   <span class="text-[9px] text-slate-400 font-bold mb-0.5">الأولوية المحسوبة:</span>
                   <span 
                     v-if="getPriorityCategory(getPriorityScore(form)) === 'critical'" 
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs cursor-help"
+                    :title="getPriorityScoreTooltip(form)"
                   >
                     ضرورية جداً ({{ getPriorityScore(form) }}ن)
                   </span>
                   <span 
                     v-else-if="getPriorityCategory(getPriorityScore(form)) === 'high'" 
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 shadow-2xs"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 shadow-2xs cursor-help"
+                    :title="getPriorityScoreTooltip(form)"
                   >
                     ضرورية ({{ getPriorityScore(form) }}ن)
                   </span>
                   <span 
                     v-else-if="getPriorityCategory(getPriorityScore(form)) === 'medium'" 
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs cursor-help"
+                    :title="getPriorityScoreTooltip(form)"
                   >
                     متوسطة ({{ getPriorityScore(form) }}ن)
                   </span>
                   <span 
                     v-else 
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs cursor-help"
+                    :title="getPriorityScoreTooltip(form)"
                   >
                     ضعيفة ({{ getPriorityScore(form) }}ن)
                   </span>
@@ -1552,11 +1556,22 @@
     <!-- Organization Settings Modal -->
     <div v-if="showSettingsModal"
       class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
-        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          ⚙️ إعدادات وهوية الجمعية (للطباعة الرسمية)
-        </h3>
-        <div class="space-y-3">
+      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-right">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              ⚙️ إعدادات الجمعية ونظام الأولويات
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">ضبط هوية الجمعية للطباعة، نقاط الحالة العائلية، وعتبات تصنيف الحالات الأربعة</p>
+          </div>
+          <button @click="showSettingsModal = false" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">✕</button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="overflow-y-auto p-6 space-y-6 flex-1 text-xs">
+          <!-- Section 1: Official Org Identity -->
+          <div class="space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">اسم الجمعية الخيرية *</label>
             <input v-model="settingsForm.org_name" type="text"
@@ -1592,12 +1607,137 @@
             <textarea v-model="settingsForm.footer_text" rows="2"
               class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
           </div>
+          </div>
 
-          <!-- Priority Points Settings -->
+          <!-- Section 2: Marital Status Priority Points -->
+          <div class="space-y-3 pt-4 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                <span>👨‍👩‍👧‍👦</span>
+                <span>نقاط الحالة العائلية (تُحتسب تلقائياً في رصيد الأولوية)</span>
+              </h4>
+              <span class="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
+                تضاف إلى رصيد الأسرة
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed">
+              تُمنح هذه النقاط للأسرة تلقائياً حسب الحالة العائلية لرب الأسرة أو المستفيد المسجل في الاستمارة:
+            </p>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <!-- Widow -->
+              <div class="bg-rose-50/50 border border-rose-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-rose-900 block text-xs">أرمل / أرملة</span>
+                  <span class="text-[10px] text-rose-600">أرمل(ة) / أيتام</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_widow" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-rose-700 font-bold">ن</span>
+                </div>
+              </div>
+
+              <!-- Deserted / Family Abandonment -->
+              <div class="bg-amber-50/50 border border-amber-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-amber-900 block text-xs">إهمال عائلي</span>
+                  <span class="text-[10px] text-amber-600">هجر أو إهمال</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_deserted" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-amber-700 font-bold">ن</span>
+                </div>
+              </div>
+
+              <!-- Divorced -->
+              <div class="bg-orange-50/50 border border-orange-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-orange-900 block text-xs">مطلق / مطلقة</span>
+                  <span class="text-[10px] text-orange-600">حضانة منفردة</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_divorced" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-orange-700 font-bold">ن</span>
+                </div>
+              </div>
+
+              <!-- Married -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">متزوج / متزوجة</span>
+                  <span class="text-[10px] text-slate-500">كلا الوالدين</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_married" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
+                </div>
+              </div>
+
+              <!-- Single -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">أعزب / عزباء</span>
+                  <span class="text-[10px] text-slate-500">كفيل غير متزوج</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_single" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
+                </div>
+              </div>
+
+              <!-- Other -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">حالات أخرى</span>
+                  <span class="text-[10px] text-slate-500">وضع عائلي خاص</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input 
+                    v-model.number="settingsForm.marital_points_other" 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    class="w-14 text-center font-mono font-bold text-sm bg-white border border-slate-300 rounded-lg p-1 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <span class="text-[10px] text-slate-600 font-bold">ن</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="pt-2 border-t border-slate-100">
             <label class="block text-xs font-bold text-indigo-700 mb-1 flex items-center gap-1.5">
               <span>🎯</span>
-              <span>نقاط الأولوية لكل تلميذ متمدرس (ابتدائي، متوسط، ثانوي)</span>
+              <span>نقاط الأبناء المتمدرسين</span>
             </label>
             <div class="flex items-center gap-3">
               <input 
@@ -1609,17 +1749,134 @@
                 class="w-28 text-sm font-bold font-mono text-center border border-indigo-200 bg-indigo-50/30 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
               />
               <span class="text-xs text-slate-500">
-                نقاط تضاف لكل ابن متمدرس في معادلة الأولوية (القيمة الافتراضية: 5 نقاط).
+                نقاط إضافية تُمنح عن <strong>كل ابن متمدرس</strong> (ابتدائي، متوسط، ثانوي) مسجل في الاستمارة (الافتراضي: 5 نقاط لكل تلميذ).
               </span>
             </div>
           </div>
+          <!-- Section 4: Priority Level Thresholds (عتبات تصنيف الحالات الأربعة) -->
+          <div class="space-y-3 pt-4 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                <span>🎯</span>
+                <span>عتبات تصنيف الأولويات الأربعة (حدود الانتقال بين الحالات)</span>
+              </h4>
+              <span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                4 مستويات
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed">
+              يتم تصنيف الأسرة آلياً ضمن أحد المستويات الأربعة استناداً إلى مجموع النقاط مقارنة بالعتبات التالية:
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <!-- Critical Threshold -->
+              <div class="bg-rose-50/60 border border-rose-200 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                    🔴 ضرورية جداً
+                  </span>
+                  <span class="text-[10px] text-rose-600 font-bold">حرجة جداً</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
+                  <input 
+                    v-model.number="settingsForm.priority_threshold_critical" 
+                    type="number" 
+                    min="1" 
+                    max="500" 
+                    class="w-full text-center font-mono font-bold text-sm bg-white border border-rose-300 rounded-lg p-1.5 text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  />
+                  <span class="text-xs text-rose-800 font-bold">نقطة</span>
+                </div>
+                <p class="text-[10px] text-rose-700 mt-1.5">
+                  كل أسرة نقاطها {{ settingsForm.priority_threshold_critical }} أو أكثر.
+                </p>
+              </div>
+
+              <!-- High Threshold -->
+              <div class="bg-orange-50/60 border border-orange-200 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+                    🟠 ضرورية
+                  </span>
+                  <span class="text-[10px] text-orange-600 font-bold">عالية</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
+                  <input 
+                    v-model.number="settingsForm.priority_threshold_high" 
+                    type="number" 
+                    min="1" 
+                    max="500" 
+                    class="w-full text-center font-mono font-bold text-sm bg-white border border-orange-300 rounded-lg p-1.5 text-orange-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <span class="text-xs text-orange-800 font-bold">نقطة</span>
+                </div>
+                <p class="text-[10px] text-orange-700 mt-1.5">
+                  بين {{ settingsForm.priority_threshold_high }} و {{ (settingsForm.priority_threshold_critical || 60) - 1 }} نقطة.
+                </p>
+              </div>
+
+              <!-- Medium Threshold -->
+              <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                    🟡 متوسطة
+                  </span>
+                  <span class="text-[10px] text-amber-600 font-bold">متوسطة الأهمية</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs text-slate-600 font-bold">العتبة ≥</span>
+                  <input 
+                    v-model.number="settingsForm.priority_threshold_medium" 
+                    type="number" 
+                    min="1" 
+                    max="500" 
+                    class="w-full text-center font-mono font-bold text-sm bg-white border border-amber-300 rounded-lg p-1.5 text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                  <span class="text-xs text-amber-800 font-bold">نقطة</span>
+                </div>
+                <p class="text-[10px] text-amber-700 mt-1.5">
+                  بين {{ settingsForm.priority_threshold_medium }} و {{ (settingsForm.priority_threshold_high || 45) - 1 }} نقطة.
+                </p>
+              </div>
+            </div>
+
+            <!-- Fourth Category: Low (automatic) -->
+            <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  🟢 ضعيفة / منخفضة
+                </span>
+                <span class="text-[11px] text-emerald-800">
+                  الحالة الرابعة وتُمنح تلقائياً لأي أسرة يقل مجموع نقاطها عن عتبة المتوسطة (&lt; {{ settingsForm.priority_threshold_medium }} نقطة).
+                </span>
+              </div>
+              <span class="font-mono font-bold text-emerald-700 bg-white border border-emerald-200 px-2 py-0.5 rounded text-xs shrink-0">
+                &lt; {{ settingsForm.priority_threshold_medium }}
+              </span>
+            </div>
+
+            <!-- Order validation warning if configured incorrectly -->
+            <div 
+              v-if="(Number(settingsForm.priority_threshold_critical) <= Number(settingsForm.priority_threshold_high)) || (Number(settingsForm.priority_threshold_high) <= Number(settingsForm.priority_threshold_medium))" 
+              class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] flex items-center gap-2 font-bold"
+            >
+              <span>⚠️ تنبيه في الترتيب:</span>
+              <span>يجب أن تكون عتبة (ضرورية جداً) أكبر من عتبة (ضرورية)، وعتبة (ضرورية) أكبر من عتبة (متوسطة) لضمان دقة التصنيف.</span>
+            </div>
+          </div>
         </div>
-        <div class="flex justify-end gap-2 mt-6">
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 shrink-0">
           <button @click="showSettingsModal = false"
-            class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">إلغاء</button>
+            class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+            إلغاء
+          </button>
           <button @click="saveSettings"
-            class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium">حفظ
-            الإعدادات</button>
+            class="px-5 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs transition cursor-pointer">
+            حفظ الإعدادات والتنقيط
+          </button>
         </div>
       </div>
     </div>
@@ -3053,7 +3310,49 @@ watch(printDocType, (newVal) => {
 
 const fullBeneficiariesForPrint = ref([]);
 
-const getPriorityScore = (b) => {
+const getMaritalStatusPoints = (maritalStatus) => {
+  if (!maritalStatus) return 0;
+  const s = String(maritalStatus).trim();
+  const cfg = orgSettings.value || {};
+  if (s.includes('أرمل') || s.includes('ارمل')) return Number(cfg.marital_points_widow ?? 30);
+  if (s.includes('إهمال') || s.includes('اهمال') || s.includes('هجر')) return Number(cfg.marital_points_deserted ?? 25);
+  if (s.includes('مطلق')) return Number(cfg.marital_points_divorced ?? 20);
+  if (s.includes('متزوج')) return Number(cfg.marital_points_married ?? 10);
+  if (s.includes('أعزب') || s.includes('اعزب') || s.includes('عزب')) return Number(cfg.marital_points_single ?? 5);
+  return Number(cfg.marital_points_other ?? 5);
+};
+
+const getPriorityBreakdown = (b) => {
+  const target = b && b.value ? b.value : (b || {});
+  const status = socialStatuses.value?.find(s => s.name === target.social_status);
+  const basePoints = status && status.base_points !== undefined ? Number(status.base_points) : 20;
+  const maritalPoints = getMaritalStatusPoints(target.marital_status);
+  const ptsPerStudent = Number(orgSettings.value?.student_priority_points ?? 5);
+  const totalStudents = (Number(target.primary_count) || 0) + (Number(target.middle_count) || 0) + (Number(target.secondary_count) || 0);
+  const studentPoints = totalStudents * ptsPerStudent;
+  const extraPoints = Number(target.extra_priority_points) || 0;
+  const total = basePoints + maritalPoints + studentPoints + extraPoints;
+  return {
+    basePoints,
+    maritalPoints,
+    studentPoints,
+    totalStudents,
+    ptsPerStudent,
+    extraPoints,
+    total
+  };
+};
+
+const getPriorityScoreTooltip = (b) => {
+  if (!b) return '';
+  const bd = getPriorityBreakdown(b);
+  const target = b && b.value ? b.value : (b || {});
+  return `المجموع: ${bd.total} نقطة\n• الحالة الاجتماعية (${target.social_status || 'غير محدد'}): ${bd.basePoints} ن\n• الحالة العائلية (${target.marital_status || 'غير محدد'}): ${bd.maritalPoints} ن\n• المتمدرسين (${bd.totalStudents} × ${bd.ptsPerStudent}ن): ${bd.studentPoints} ن\n• نقاط استثنائية: ${bd.extraPoints} ن`;
+};
+
+const getPriorityScore = (b) => getPriorityBreakdown(b).total;
+
+const _old_getPriorityScore = (b) => {
   const status = socialStatuses.value.find(s => s.name === b.social_status);
   const basePoints = status && status.base_points !== undefined ? Number(status.base_points) : 20;
   const ptsPerStudent = Number(orgSettings.value?.student_priority_points) || 5;
@@ -3063,6 +3362,17 @@ const getPriorityScore = (b) => {
 };
 
 const getPriorityCategory = (score) => {
+  const cfg = orgSettings.value || {};
+  const crit = Number(cfg.priority_threshold_critical ?? 60);
+  const high = Number(cfg.priority_threshold_high ?? 45);
+  const med = Number(cfg.priority_threshold_medium ?? 30);
+  if (score >= crit) return 'critical';
+  if (score >= high) return 'high';
+  if (score >= med) return 'medium';
+  return 'low';
+};
+
+const _old_getPriorityCategory = (score) => {
   if (score >= 60) return 'critical';
   if (score >= 45) return 'high';
   if (score >= 30) return 'medium';
@@ -3205,7 +3515,7 @@ const openSettingsModal = () => orgStore.openSettingsModal();
 const saveSettings = async () => {
   try {
     await orgStore.saveOrgSettings();
-    notifySuccess('تم الحفظ بنجاح', 'تم حفظ إعدادات الجمعية بنجاح!');
+    notifySuccess('تم الحفظ بنجاح', 'تم حفظ إعدادات الجمعية ونقاط الأولويات بنجاح!');
   } catch (e) {
     notifyError('خطأ أثناء حفظ الإعدادات', e.message || e);
   }

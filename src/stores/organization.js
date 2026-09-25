@@ -11,7 +11,16 @@ export const useOrganizationStore = defineStore('organization', {
       commune: '',
       phone: '',
       footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.',
-      student_priority_points: 5
+      student_priority_points: 5,
+      marital_points_widow: 30,
+      marital_points_divorced: 20,
+      marital_points_deserted: 25,
+      marital_points_married: 10,
+      marital_points_single: 5,
+      marital_points_other: 5,
+      priority_threshold_critical: 60,
+      priority_threshold_high: 45,
+      priority_threshold_medium: 30
     },
     showSettingsModal: false,
     settingsForm: {
@@ -22,7 +31,16 @@ export const useOrganizationStore = defineStore('organization', {
       commune: '',
       phone: '',
       footer_text: 'وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.',
-      student_priority_points: 5
+      student_priority_points: 5,
+      marital_points_widow: 30,
+      marital_points_divorced: 20,
+      marital_points_deserted: 25,
+      marital_points_married: 10,
+      marital_points_single: 5,
+      marital_points_other: 5,
+      priority_threshold_critical: 60,
+      priority_threshold_high: 45,
+      priority_threshold_medium: 30
     },
     isLoading: false,
   }),

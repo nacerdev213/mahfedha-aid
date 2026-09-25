@@ -114,6 +114,15 @@ pub struct OrgSettings {
     pub phone: String,
     pub footer_text: String,
     pub student_priority_points: Option<i64>,
+    pub marital_points_widow: Option<i64>,
+    pub marital_points_divorced: Option<i64>,
+    pub marital_points_deserted: Option<i64>,
+    pub marital_points_married: Option<i64>,
+    pub marital_points_single: Option<i64>,
+    pub marital_points_other: Option<i64>,
+    pub priority_threshold_critical: Option<i64>,
+    pub priority_threshold_high: Option<i64>,
+    pub priority_threshold_medium: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -1269,7 +1278,11 @@ fn batch_import_records(state: State<AppState>, campaign_id: i64, records: Vec<B
 fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let settings = conn.query_row(
-        "SELECT id, org_name, branch_name, wilaya, commune, phone, footer_text, student_priority_points FROM organization_settings WHERE id = 1",
+        "SELECT id, org_name, branch_name, wilaya, commune, phone, footer_text, student_priority_points,
+                marital_points_widow, marital_points_divorced, marital_points_deserted, marital_points_married,
+                marital_points_single, marital_points_other, priority_threshold_critical, priority_threshold_high,
+                priority_threshold_medium
+         FROM organization_settings WHERE id = 1",
         [],
         |row| {
             Ok(OrgSettings {
@@ -1281,6 +1294,15 @@ fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
                 phone: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
                 footer_text: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
                 student_priority_points: row.get::<_, Option<i64>>(7)?.or(Some(5)),
+                marital_points_widow: row.get::<_, Option<i64>>(8)?.or(Some(30)),
+                marital_points_divorced: row.get::<_, Option<i64>>(9)?.or(Some(20)),
+                marital_points_deserted: row.get::<_, Option<i64>>(10)?.or(Some(25)),
+                marital_points_married: row.get::<_, Option<i64>>(11)?.or(Some(10)),
+                marital_points_single: row.get::<_, Option<i64>>(12)?.or(Some(5)),
+                marital_points_other: row.get::<_, Option<i64>>(13)?.or(Some(5)),
+                priority_threshold_critical: row.get::<_, Option<i64>>(14)?.or(Some(60)),
+                priority_threshold_high: row.get::<_, Option<i64>>(15)?.or(Some(45)),
+                priority_threshold_medium: row.get::<_, Option<i64>>(16)?.or(Some(30)),
             })
         },
     ).optional().map_err(|e| e.to_string())?;
@@ -1294,6 +1316,15 @@ fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
         phone: "".into(),
         footer_text: "وثيقة إدارية داخلية مخصصة لضبط عملية التوزيع.".into(),
         student_priority_points: Some(5),
+        marital_points_widow: Some(30),
+        marital_points_divorced: Some(20),
+        marital_points_deserted: Some(25),
+        marital_points_married: Some(10),
+        marital_points_single: Some(5),
+        marital_points_other: Some(5),
+        priority_threshold_critical: Some(60),
+        priority_threshold_high: Some(45),
+        priority_threshold_medium: Some(30),
     }))
 }
 
@@ -1301,9 +1332,25 @@ fn get_org_settings(state: State<AppState>) -> Result<OrgSettings, String> {
 fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<(), String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let pts = settings.student_priority_points.unwrap_or(5);
+    let pts_widow = settings.marital_points_widow.unwrap_or(30);
+    let pts_divorced = settings.marital_points_divorced.unwrap_or(20);
+    let pts_deserted = settings.marital_points_deserted.unwrap_or(25);
+    let pts_married = settings.marital_points_married.unwrap_or(10);
+    let pts_single = settings.marital_points_single.unwrap_or(5);
+    let pts_other = settings.marital_points_other.unwrap_or(5);
+    let th_crit = settings.priority_threshold_critical.unwrap_or(60);
+    let th_high = settings.priority_threshold_high.unwrap_or(45);
+    let th_med = settings.priority_threshold_medium.unwrap_or(30);
+
     conn.execute(
-        "INSERT INTO organization_settings (id, org_name, branch_name, wilaya, commune, phone, footer_text, student_priority_points)
-         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        "INSERT INTO organization_settings (
+            id, org_name, branch_name, wilaya, commune, phone, footer_text,
+            student_priority_points, marital_points_widow, marital_points_divorced,
+            marital_points_deserted, marital_points_married, marital_points_single,
+            marital_points_other, priority_threshold_critical, priority_threshold_high,
+            priority_threshold_medium
+         )
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
          ON CONFLICT(id) DO UPDATE SET
          org_name = excluded.org_name,
          branch_name = excluded.branch_name,
@@ -1311,7 +1358,16 @@ fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<()
          commune = excluded.commune,
          phone = excluded.phone,
          footer_text = excluded.footer_text,
-         student_priority_points = excluded.student_priority_points",
+         student_priority_points = excluded.student_priority_points,
+         marital_points_widow = excluded.marital_points_widow,
+         marital_points_divorced = excluded.marital_points_divorced,
+         marital_points_deserted = excluded.marital_points_deserted,
+         marital_points_married = excluded.marital_points_married,
+         marital_points_single = excluded.marital_points_single,
+         marital_points_other = excluded.marital_points_other,
+         priority_threshold_critical = excluded.priority_threshold_critical,
+         priority_threshold_high = excluded.priority_threshold_high,
+         priority_threshold_medium = excluded.priority_threshold_medium",
         params![
             settings.org_name.trim(),
             settings.branch_name.trim(),
@@ -1320,6 +1376,15 @@ fn save_org_settings(state: State<AppState>, settings: OrgSettings) -> Result<()
             settings.phone.trim(),
             settings.footer_text.trim(),
             pts,
+            pts_widow,
+            pts_divorced,
+            pts_deserted,
+            pts_married,
+            pts_single,
+            pts_other,
+            th_crit,
+            th_high,
+            th_med,
         ],
     ).map_err(|e| e.to_string())?;
     Ok(())
@@ -2072,6 +2137,15 @@ fn main() {
 
     // Migration: add student_priority_points to organization_settings
     let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN student_priority_points INTEGER DEFAULT 5", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_widow INTEGER DEFAULT 30", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_divorced INTEGER DEFAULT 20", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_deserted INTEGER DEFAULT 25", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_married INTEGER DEFAULT 10", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_single INTEGER DEFAULT 5", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN marital_points_other INTEGER DEFAULT 5", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN priority_threshold_critical INTEGER DEFAULT 60", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN priority_threshold_high INTEGER DEFAULT 45", []);
+    let _ = conn.execute("ALTER TABLE organization_settings ADD COLUMN priority_threshold_medium INTEGER DEFAULT 30", []);
 
     // Migration: add extra_priority_points to campaign_records
     let _ = conn.execute("ALTER TABLE campaign_records ADD COLUMN extra_priority_points INTEGER DEFAULT 0", []);
