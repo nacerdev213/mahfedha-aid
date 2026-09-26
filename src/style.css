@@ -1,3 +1,29 @@
+/* 100% Offline Local Arabic Font Definitions */
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'), local('Cairo-Regular'), local('Segoe UI'), local('Tahoma');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo SemiBold'), local('Cairo-SemiBold'), local('Segoe UI Semibold'), local('Tahoma Bold');
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo Bold'), local('Cairo-Bold'), local('Segoe UI Bold'), local('Tahoma Bold');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo Black'), local('Cairo-Black'), local('Segoe UI Black'), local('Tahoma Bold');
+  font-weight: 900;
+  font-style: normal;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

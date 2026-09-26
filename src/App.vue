@@ -3418,10 +3418,10 @@
     @close="showDeveloperModal = false"
   />
 
-  <!-- In-App Smooth Splashscreen Transition (Ensures zero blank-screen flicker) -->
+  <!-- In-App Smooth Splashscreen Transition (Fallback for browser preview) -->
   <transition name="fade">
     <div
-      v-if="isInitialLoading"
+      v-if="isInitialLoading && !isTauriDesktop"
       class="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 select-none no-print"
       dir="rtl"
     >
@@ -3504,6 +3504,7 @@ import HelpCenterModal from './components/HelpCenterModal.vue';
 import DeveloperContactModal from './components/DeveloperContactModal.vue';
 
 // Splashscreen initial loading state (guarantees zero blank screen)
+const isTauriDesktop = typeof window !== 'undefined' && !!(window.__TAURI__);
 const isInitialLoading = ref(true);
 const dismissInAppSplash = () => {
   isInitialLoading.value = false;
@@ -5299,20 +5300,25 @@ onMounted(async () => {
     await beneficiaryStore.fetchData(selectedCampaignId.value);
   }
 
-  // Graceful splashscreen transition: reveal main window after data has loaded
+  // Ensure DOM is fully painted by Vue before showing window to eliminate any white flash
+  await nextTick();
+  isInitialLoading.value = false;
+
+  // 1. Reveal the main window: it appears with all data already rendered, directly behind the centered splashscreen!
+  try {
+    await safeInvoke('show_main_window');
+  } catch (e) {
+    console.warn('show_main_window error:', e);
+  }
+
+  // 2. Keep the splashscreen floating in the center of the main window for 1.8 seconds (Office style), then close it
   setTimeout(async () => {
-    isInitialLoading.value = false;
     try {
-      if (window.__TAURI__) {
-        const invoke = window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
-        if (invoke) {
-          await invoke('close_splashscreen');
-        }
-      }
+      await safeInvoke('close_splashscreen');
     } catch (e) {
-      console.warn('Splashscreen dismiss notice:', e);
+      console.warn('close_splashscreen error:', e);
     }
-  }, 1000);
+  }, 1800);
 });
 
 const handleGlobalKeydown = (e) => {

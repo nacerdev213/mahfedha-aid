@@ -49,6 +49,12 @@
       color: #ffffff;
       cursor: grab;
       overflow: hidden;
+      transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .splash-card.fade-out {
+      opacity: 0 !important;
+      transform: scale(0.95) !important;
     }
 
     .splash-card:active {
@@ -372,12 +378,13 @@
 
   <script>
     // Status text animation sequence (Office-style)
+    // Animated Status Sequence
     const statusSteps = [
       'جاري تهيئة محرك التطبيق...',
       'تحميل محرك قاعدة البيانات SQLite المشفرة...',
       'فحص الحملات وسجلات المستفيدين...',
       'تجهيز الواجهة الرسومية والأدوات...',
-      'اكتمل التحميل، جاري فتح المنظومة...'
+      'فتح واجهة المنظومة...'
     ];
 
     let currentStep = 0;
@@ -392,30 +399,65 @@
       } else {
         clearInterval(statusInterval);
       }
-    }, 450);
+    }, 400);
 
-    // Dismiss Splashscreen: Shows main window and closes splashscreen, app never terminates
+    // Event when main window appears behind this floating splashscreen in the center
+    function onMainWindowReady() {
+      clearInterval(statusInterval);
+      const statusText = document.getElementById('statusText');
+      if (statusText) {
+        statusText.innerHTML = `
+          <span style="color: #34d399; font-size: 14px; font-weight: 900;">✓</span>
+          <span style="color: #a7f3d0; font-weight: 700;">اكتمل التحميل، جاهز للاستخدام!</span>
+        `;
+      }
+      const indicator = document.querySelector('.progress-bar-indicator');
+      if (indicator) {
+        indicator.style.animation = 'none';
+        indicator.style.width = '100%';
+        indicator.style.right = '0';
+        indicator.style.background = 'linear-gradient(90deg, #10b981, #38bdf8)';
+        indicator.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.8)';
+      }
+    }
+
+    try {
+      if (window.__TAURI__ && window.__TAURI__.event) {
+        window.__TAURI__.event.listen('main-window-ready', () => {
+          onMainWindowReady();
+        });
+      }
+    } catch (_) {}
+
+    // Dismiss Splashscreen: Smooth fade-out before window closes
     let isDismissed = false;
     async function dismissSplash() {
       if (isDismissed) return;
       isDismissed = true;
 
-      try {
-        if (window.__TAURI__) {
-          const invoke = window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke);
+      const card = document.getElementById('splashCard');
+      if (card) {
+        card.classList.add('fade-out');
+      }
+
+      setTimeout(async () => {
+        try {
+          const invoke = (window.__TAURI__ && window.__TAURI__.tauri && window.__TAURI__.tauri.invoke) || 
+                         (window.__TAURI__ && window.__TAURI__.invoke) || 
+                         window.__TAURI_INVOKE__;
           if (invoke) {
             await invoke('close_splashscreen');
             return;
           }
+        } catch (e) {
+          console.warn('Error invoking close_splashscreen:', e);
         }
-      } catch (e) {
-        console.warn('Error invoking close_splashscreen:', e);
-      }
 
-      // Web preview fallback
-      try {
-        window.close();
-      } catch (_) {}
+        // Web preview fallback
+        try {
+          window.close();
+        } catch (_) {}
+      }, 350);
     }
 
     // Keyboard shortcuts (Escape or Enter to dismiss immediately)
@@ -438,10 +480,10 @@
       });
     }
 
-    // Safety timeout: If main window doesn't dismiss within 7 seconds, auto-reveal
+    // Emergency safety timeout: only triggers if app completely fails to load after 30 seconds
     setTimeout(() => {
       dismissSplash();
-    }, 7000);
+    }, 30000);
   </script>
 </body>
 </html>

@@ -2773,6 +2773,7 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState { db: Mutex::new(conn) })
         .invoke_handler(tauri::generate_handler![
+            show_main_window,
             close_splashscreen,
             get_campaigns,
             create_campaign,
@@ -2818,6 +2819,22 @@ fn main() {
         ])
         .run(tauri::generate_context!("tauri.conf.json"))
         .expect("خطأ أثناء تشغيل Tauri");
+}
+
+#[tauri::command]
+async fn show_main_window(window: tauri::Window) -> Result<(), String> {
+    // 1. Show main window so it appears behind the splashscreen in the center
+    if let Some(main_win) = window.get_window("main") {
+        let _ = main_win.show();
+        let _ = main_win.unminimize();
+    }
+    // 2. Keep splashscreen centered and on top of the main window
+    if let Some(splash_win) = window.get_window("splashscreen") {
+        let _ = splash_win.set_always_on_top(true);
+        let _ = splash_win.set_focus();
+        let _ = splash_win.emit("main-window-ready", ());
+    }
+    Ok(())
 }
 
 #[tauri::command]

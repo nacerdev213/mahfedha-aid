@@ -1,20 +1,19 @@
-// Centralized Tauri invoke wrapper with development fallback
-let tauriInvoke = null;
+import { invoke as apiInvoke } from '@tauri-apps/api/tauri';
 
+// Centralized Tauri invoke wrapper with development fallback
 export const safeInvoke = async (cmd, args) => {
-  if (window.__TAURI__) {
-    if (!tauriInvoke) {
-      try {
-        const mod = await import('@tauri-apps/api/tauri');
-        tauriInvoke = mod.invoke;
-      } catch (e) {
-        if (window.__TAURI__.invoke) {
-          tauriInvoke = window.__TAURI__.invoke;
-        }
+  if (typeof window !== 'undefined' && window.__TAURI__) {
+    try {
+      return await apiInvoke(cmd, args);
+    } catch (e) {
+      if (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke) {
+        return await window.__TAURI__.tauri.invoke(cmd, args);
+      } else if (window.__TAURI__.invoke) {
+        return await window.__TAURI__.invoke(cmd, args);
+      } else if (window.__TAURI_INVOKE__) {
+        return await window.__TAURI_INVOKE__(cmd, args);
       }
-    }
-    if (tauriInvoke) {
-      return await tauriInvoke(cmd, args);
+      throw e;
     }
   }
 
